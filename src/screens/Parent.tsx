@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, UKRAINIAN_ALPHABET, toLower, toUpper, type LetterId } from '../content/alphabet';
+import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, toLower, toUpper, type LetterId } from '../content/alphabet';
 import { CHILD_NAME } from '../content/phrases';
 import type { Mission } from '../content/types';
 import { WEEK_1, WEEK_1_MISSIONS } from '../content/week1';
@@ -14,6 +14,7 @@ import { sayKey, voiceItems } from '../logic/voice';
 import {
   LETTER_STATUS_LABEL,
   lockLetter,
+  logLetter,
   logReading,
   setLetterStatus,
   suggestStatus,
@@ -322,7 +323,11 @@ function ReadingReview() {
     try {
       // Спершу видаляємо запис: якщо не вийде, відмітка не задвоїться при повторному натисканні.
       await removeReading(r.id);
-      if (ok !== undefined) updateProgress((s) => logReading(s, r.text, ok, todayISO(new Date(r.at))));
+      if (ok !== undefined) {
+        const day = todayISO(new Date(r.at));
+        // Звук букви («Що це за звук?») іде в повторення букв, а склади й слова - в журнал читання.
+        updateProgress((s) => (isLetterId(r.text) ? logLetter(s, { id: r.text, firstTry: ok }, day) : logReading(s, r.text, ok, day)));
+      }
     } finally {
       setBusy(null);
     }
@@ -345,7 +350,7 @@ function ReadingReview() {
                 </svg>
               </button>
               <span className="review-row__info">
-                <span className="read-row__text">{r.text.toLocaleUpperCase('uk-UA')}</span>
+                <span className="read-row__text">{isLetterId(r.text) ? `звук ${r.text}` : r.text.toLocaleUpperCase('uk-UA')}</span>
                 <small className="review-row__when">{formatWhen(r.at)}</small>
               </span>
               <span className="read-row__actions">

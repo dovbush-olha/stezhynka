@@ -1,4 +1,4 @@
-import { BASE_LETTERS, LETTERS, isReadableWith, lettersOf, toLower, type LetterId } from '../content/alphabet';
+import { BASE_LETTERS, LETTERS, LOOKALIKES, isReadableWith, lettersOf, toLower, type LetterId } from '../content/alphabet';
 import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
 import { WEEK_1_MISSIONS } from '../content/week1';
@@ -75,18 +75,34 @@ export function dueLetters(state: ProgressState, today: string, exclude: LetterI
     });
 }
 
-function letterExercise(
-  target: LetterId,
-  pool: LetterId[],
-  rng: Rng,
-  variant: 'find-letter' | 'letter-by-sound',
-  letterCase?: LetterCase,
-): Exercise {
-  const distractors = shuffle(
-    pool.filter((l) => l !== target && LETTERS[l].kind !== 'sign'),
+type LetterVariant = 'find-letter' | 'letter-by-sound' | 'say-sound';
+
+function letterExercise(target: LetterId, pool: LetterId[], rng: Rng, variant: LetterVariant, letterCase?: LetterCase): Exercise {
+  if (variant === 'say-sound') return { kind: 'say-sound', letter: target, letterCase };
+  return { kind: variant, target, options: shuffle([target, ...letterDistractors(target, pool, rng)], rng), letterCase };
+}
+
+/**
+ * Два зайві варіанти: спершу найсхожіша на вигляд буква з доступних (Л поруч з М),
+ * далі будь-яка. Інакше букву знаходять як «єдину не таку», нічого про неї не знаючи.
+ */
+export function letterDistractors(target: LetterId, pool: readonly LetterId[], rng: Rng): LetterId[] {
+  const candidates = pool.filter((l) => l !== target && LETTERS[l].kind !== 'sign');
+  const lookalike = (LOOKALIKES[target] ?? []).find((l) => candidates.includes(l));
+  const rest = shuffle(
+    candidates.filter((l) => l !== lookalike),
     rng,
-  ).slice(0, 2);
-  return { kind: variant, target, options: shuffle([target, ...distractors], rng), letterCase };
+  );
+  return [...(lookalike ? [lookalike] : []), ...rest].slice(0, 2);
+}
+
+/**
+ * Згадати звук, побачивши букву, - те, що потрібно для читання, і найважче.
+ * Тому повторення букви здебільшого саме таке, а впізнавання серед схожих - навперемін.
+ */
+function reviewVariant(rng: Rng): LetterVariant {
+  const r = rng();
+  return r < 0.6 ? 'say-sound' : r < 0.8 ? 'letter-by-sound' : 'find-letter';
 }
 
 /** Розминка - не більше трьох вправ, і разом з місією не більше чотирнадцяти. */
@@ -101,14 +117,16 @@ const MAX_WITH_WARM_UP = 14;
 export function warmUp(state: ProgressState, mission: Mission, today: string, rng: Rng): Exercise[] {
   const limit = Math.max(1, Math.min(MAX_WARM_UP, MAX_WITH_WARM_UP - mission.exercises.length));
   const alreadyPractised = new Set<LetterId>(
-    mission.exercises.flatMap((e) => (e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : [])),
+    mission.exercises.flatMap((e) =>
+      e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : [],
+    ),
   );
   const pool = mission.requires.filter((l) => state.unlocked.includes(l));
   // Нову букву місії до знайомства з нею не показуємо навіть як зайвий варіант.
   const known = pool.filter((l) => !(mission.newLetters ?? []).includes(l));
   const out: Exercise[] = [];
   const letter = dueLetters(state, today, [...(mission.newLetters ?? []), ...alreadyPractised]).find((l) => known.includes(l));
-  if (letter) out.push(letterExercise(letter, known, rng, rng() < 0.5 ? 'find-letter' : 'letter-by-sound'));
+  if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng)));
 
   for (const text of dueItems(state.review, today, known, textsOf(mission.exercises))) {
     if (out.length >= limit) break;
@@ -198,10 +216,12 @@ export function buildPracticeMission(state: ProgressState, today: string, rng: R
 
   const due = dueLetters(state, today, [...(fresh ? [fresh] : []), ...held]);
   const introduced = introducedLetters(state).filter((l) => letters.includes(l) && LETTERS[l].kind !== 'sign');
-  const focus = (due.length ? due : shuffle(introduced, rng)).slice(0, fresh ? 1 : 2);
-  focus.forEach((l, i) =>
-    exercises.push(letterExercise(l, letters, rng, i % 2 === 0 ? 'letter-by-sound' : 'find-letter', i === 1 ? 'lower' : undefined)),
-  );
+  // З новою буквою місія й так довга: старі букви повторить розминка звичайних місій.
+  const focus = (due.length ? due : shuffle(introduced, rng)).slice(0, fresh ? 0 : 2);
+  // Перша буква: спершу впізнаємо серед схожих, а наприкінці місії згадуємо її звук сама.
+  // Друга - одразу згадуємо звук малої букви.
+  focus.forEach((l, i) => exercises.push(letterExercise(l, letters, rng, i === 0 ? 'letter-by-sound' : 'say-sound', i === 1 ? 'lower' : undefined)));
+  const recallLater = fresh ?? focus[0];
 
   const known = letters.filter((l) => l !== fresh);
   const waiting = dueItems(state.review, today, known);
@@ -266,6 +286,9 @@ export function buildPracticeMission(state: ProgressState, today: string, rng: R
       exercises.push(letterExercise(l, letters, rng, i % 2 === 0 ? 'find-letter' : 'letter-by-sound', i % 2 === 0 ? 'lower' : undefined));
     }
   }
+
+  // Наприкінці - згадати звук сама, без варіантів: між впізнаванням і згадуванням минуло кілька вправ.
+  if (recallLater) exercises.push({ kind: 'say-sound', letter: recallLater });
 
   const sticker = PRACTICE_STICKERS.find((s) => !state.stickers.includes(s)) ?? PRACTICE_STICKERS[Math.floor(rng() * PRACTICE_STICKERS.length)];
 

@@ -26,6 +26,16 @@ export interface LetterBySoundExercise {
   letterCase?: LetterCase;
 }
 
+/**
+ * Бачиш букву - скажи її звук сама. Без варіантів на вибір: звук треба згадати, а не впізнати.
+ * Саме так буква зустрічається в читанні, і саме це дається найважче.
+ */
+export interface SaySoundExercise {
+  kind: 'say-sound';
+  letter: LetterId;
+  letterCase?: LetterCase;
+}
+
 /** З'єднай два звуки в склад (М + А = МА). */
 export interface BlendExercise {
   kind: 'blend';
@@ -89,6 +99,7 @@ export type Exercise =
   | PickByEarExercise
   | FindLetterExercise
   | LetterBySoundExercise
+  | SaySoundExercise
   | BlendExercise
   | ReadSyllableExercise
   | ReadWordExercise

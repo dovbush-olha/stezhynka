@@ -6,6 +6,7 @@ import { WORDS, syllablesOf } from './words';
 export function childFacingTexts(ex: Exercise): string[] {
   switch (ex.kind) {
     case 'intro-letter':
+    case 'say-sound':
       return [ex.letter];
     case 'find-letter':
     case 'letter-by-sound':
@@ -105,6 +106,7 @@ export function validateExercise(ex: Exercise, allowed: readonly LetterId[]): st
       break;
     }
     case 'intro-letter':
+    case 'say-sound':
       break;
   }
   return errors;
@@ -118,9 +120,11 @@ export function validateMission(m: Mission): string[] {
   }
   for (const l of m.newLetters ?? []) {
     if (!m.requires.includes(l)) errors.push(`${m.id}: нова буква ${l} не входить у requires`);
-    if (!m.exercises.some((e) => e.kind === 'intro-letter' && e.letter === l)) {
-      errors.push(`${m.id}: нову букву ${l} не представлено вправою intro-letter`);
-    }
+    const intro = m.exercises.findIndex((e) => e.kind === 'intro-letter' && e.letter === l);
+    if (intro === -1) errors.push(`${m.id}: нову букву ${l} не представлено вправою intro-letter`);
+    // Згадати звук можна лише після знайомства з ним.
+    const say = m.exercises.findIndex((e) => e.kind === 'say-sound' && e.letter === l);
+    if (say !== -1 && say < intro) errors.push(`${m.id}: звук нової букви ${l} питаємо раніше, ніж знайомимо з нею`);
   }
   if (m.exercises.length < 5 || m.exercises.length > 12) {
     errors.push(`${m.id}: ${m.exercises.length} вправ - для 5-7 хвилин потрібно 5-12`);

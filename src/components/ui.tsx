@@ -44,16 +44,16 @@ export function HintButton({ onClick, disabled }: { onClick: () => void; disable
 }
 
 /** Дорослий відмічає, як дитина прочитала. Обидва варіанти - позитивні. */
-export function ReadingMarks({ onMark }: { onMark: (alone: boolean) => void }) {
+export function ReadingMarks({ onMark, say = false }: { onMark: (alone: boolean) => void; /** Звук букви, а не читання. */ say?: boolean }) {
   return (
     <div className="reading-marks">
       <span className="reading-marks__label">Дорослому: як вийшло?</span>
       <div className="reading-marks__buttons">
         <button type="button" className="mark mark--alone" onClick={() => onMark(true)}>
-          <span aria-hidden="true">⭐</span> Прочитала сама
+          <span aria-hidden="true">⭐</span> {say ? 'Сказала сама' : 'Прочитала сама'}
         </button>
         <button type="button" className="mark mark--together" onClick={() => onMark(false)}>
-          <span aria-hidden="true">🤝</span> Прочитали разом
+          <span aria-hidden="true">🤝</span> {say ? 'Підказали' : 'Прочитали разом'}
         </button>
       </div>
     </div>
@@ -61,13 +61,13 @@ export function ReadingMarks({ onMark }: { onMark: (alone: boolean) => void }) {
 }
 
 /** Дитина грається сама: позначає, що прочитала вголос. */
-export function SoloReadButton({ onDone }: { onDone: () => void }) {
+export function SoloReadButton({ onDone, say = false }: { onDone: () => void; say?: boolean }) {
   return (
     <button type="button" className="solo-read" onClick={onDone}>
       <span className="solo-read__star" aria-hidden="true">
         ⭐
       </span>
-      Прочитала!
+      {say ? 'Сказала!' : 'Прочитала!'}
     </button>
   );
 }

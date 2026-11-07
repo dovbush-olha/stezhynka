@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { NOT_YET_STUDIED, isReadableWith, type LetterId } from '../content/alphabet';
 import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/types';
-import { validateExercise } from '../content/validate';
+import { validateExercise, validateMission } from '../content/validate';
 import { WEEK_1, WEEK_1_MISSIONS } from '../content/week1';
 import { adviseNextLetter, missionAvailability, recommend } from './availability';
-import { MAX_WARM_UP, buildPracticeMission, earExercise, makeRng, warmUp } from './generate';
+import { MAX_WARM_UP, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
 import { dueItems, practisedItems, textsOf } from './review';
 import { adaptForSolo, canPickPicture, preferRecordedVoice } from './solo';
 import { closeness } from './similar';
@@ -15,6 +15,7 @@ import {
   completeMission,
   createInitialState,
   lockLetter,
+  logLetter,
   normalizeState,
   unlockLetter,
   updateSettings,
@@ -522,5 +523,56 @@ describe('повторення складів і слів', () => {
     let s = complete(createInitialState(TODAY), 'w1d1m1');
     for (let i = 0; i < 5; i++) s = complete(s, 'w1d1m1');
     expect(s.sinceReview).toBe(1);
+  });
+});
+
+describe('звук букви: згадати, а не лише впізнати', () => {
+  it('у кожній місії з приголосною дитина сама каже звук, і щодня - звук кожної нової приголосної', () => {
+    for (const m of WEEK_1_MISSIONS.filter((x) => x.requires.includes('Л'))) {
+      expect(m.exercises.some((e) => e.kind === 'say-sound'), m.id).toBe(true);
+    }
+    for (const day of WEEK_1) {
+      for (const l of day.missions[0].newLetters ?? []) {
+        const said = day.missions.flatMap((m) => m.exercises).filter((e) => e.kind === 'say-sound' && e.letter === l);
+        if (l !== 'Е' && l !== 'И') expect(said.length, `день ${day.day}: ${l}`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  it('звук нової букви не питаємо до знайомства з нею', () => {
+    const m = { ...WEEK_1_MISSIONS.find((x) => x.id === 'w1d4m1')! };
+    m.exercises = [{ kind: 'say-sound', letter: 'М' }, ...m.exercises.filter((e) => e.kind !== 'say-sound')];
+    expect(validateMission(m).join()).toContain('раніше, ніж знайомимо');
+  });
+
+  it('зайвою буквою стає найсхожіша на вигляд: Л поруч з М, а не лише з голосними', () => {
+    for (let seed = 0; seed < 10; seed++) {
+      expect(letterDistractors('Л', ['А', 'О', 'Л', 'М'], makeRng(`l-${seed}`))[0]).toBe('М');
+      expect(letterDistractors('Н', ['А', 'И', 'Н', 'М'], makeRng(`n-${seed}`))[0]).toBe('И');
+    }
+    expect(letterDistractors('Л', ['А', 'О', 'Л'], makeRng('x')).sort()).toEqual(['А', 'О']);
+  });
+
+  it('повторення в лісі закінчується тим, що дитина сама каже звук букви', () => {
+    let s = createInitialState(TODAY);
+    s = unlockLetter(s, 'М', TODAY);
+    for (let seed = 0; seed < 10; seed++) {
+      const m = buildPracticeMission(s, TODAY, makeRng(`say-${seed}`));
+      expect(m.exercises.at(-1)?.kind, `seed ${seed}`).toBe('say-sound');
+    }
+  });
+
+  it('розминка здебільшого просить згадати звук букви', () => {
+    const s = createInitialState(TODAY);
+    const kinds = Array.from({ length: 40 }, (_, i) => warmUp(s, WEEK_1_MISSIONS[3], TODAY, makeRng(`w-${i}`))[0]?.kind);
+    expect(kinds.filter((k) => k === 'say-sound').length).toBeGreaterThan(15);
+  });
+
+  it('відмітка дорослого за записом звука йде в повторення букви', () => {
+    const s = createInitialState(TODAY);
+    const ok = logLetter(s, { id: 'Л', firstTry: true }, TODAY);
+    expect(ok.letters.Л).toMatchObject({ seen: 1, firstTry: 1, box: 2 });
+    const no = logLetter(ok, { id: 'Л', firstTry: false }, TODAY);
+    expect(no.letters.Л).toMatchObject({ seen: 2, firstTry: 1, box: 1, due: TODAY });
   });
 });

@@ -7,6 +7,7 @@ import { MatchSyllables } from './MatchSyllables';
 import { PickByEar } from './PickByEar';
 import { PickPicture } from './PickPicture';
 import { ReadItem } from './ReadItem';
+import { SaySound } from './SaySound';
 import type { ExerciseProps } from './types';
 
 /** Єдина точка, яка знає, яким компонентом показувати кожен вид вправи. */
@@ -18,6 +19,8 @@ export function ExerciseView(props: ExerciseProps<Exercise>) {
     case 'find-letter':
     case 'letter-by-sound':
       return <ChooseLetter {...props} exercise={ex} />;
+    case 'say-sound':
+      return <SaySound {...props} exercise={ex} />;
     case 'blend':
       return <Blend {...props} exercise={ex} />;
     case 'read-syllable':

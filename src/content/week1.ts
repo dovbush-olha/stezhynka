@@ -15,6 +15,8 @@ const bySound = (target: LetterId, options: LetterId[], letterCase?: LetterCase)
   options,
   letterCase,
 });
+/** Побачила букву - сама каже її звук (без варіантів на вибір). */
+const say = (letter: LetterId, letterCase?: LetterCase): Exercise => ({ kind: 'say-sound', letter, letterCase });
 const blend = (a: LetterId, b: LetterId): Exercise => ({ kind: 'blend', sounds: [a, b] });
 const syllable = (s: string): Exercise => ({ kind: 'read-syllable', syllable: s });
 const word = (w: string): Exercise => ({ kind: 'read-word', word: w });
@@ -110,12 +112,12 @@ export const WEEK_1: Day[] = [
         exercises: [
           bySound('А', ['А', 'И', 'О']),
           intro('Л'),
-          find('Л', ['Л', 'О']),
           bySound('Л', ['Л', 'А', 'Е']),
           blend('Л', 'А'),
           syllable('ла'),
           blend('Л', 'О'),
           syllable('ло'),
+          say('Л'),
           blend('Л', 'У'),
           syllable('лу'),
           match('ла', 'ло', 'лу'),
@@ -142,7 +144,7 @@ export const WEEK_1: Day[] = [
           match('ли', 'лі', 'ле'),
           syllable('ла'),
           syllable('ло'),
-          find('Л', ['Л', 'А', 'И'], 'lower'),
+          say('Л', 'lower'),
           byEar('лі', 'ли', 'ле'),
         ],
       },
@@ -163,7 +165,7 @@ export const WEEK_1: Day[] = [
           syllable('ол'),
           syllable('ул'),
           match('ал', 'ол', 'ул'),
-          syllable('лу'),
+          say('Л'),
           word('але'),
           build('Лола', ['ле', 'ли']),
           build('алло', ['ла', 'лу']),
@@ -189,7 +191,7 @@ export const WEEK_1: Day[] = [
         adultNote:
           'Ще один день з [л]: багато коротких слів, по одному. Найлегші - без подвоєних букв: «Ло-ла», «О-лі», «Лі-лі», «ли-ла». Імена пишуться з великої букви - можна показати це Майї.',
         exercises: [
-          bySound('Л', ['Л', 'И', 'А']),
+          say('Л'),
           syllable('ел'),
           syllable('ил'),
           match('ел', 'ил', 'ол'),
@@ -218,7 +220,7 @@ export const WEEK_1: Day[] = [
           word('лила'),
           word('лили'),
           word('але'),
-          blend('Л', 'И'),
+          say('Л', 'lower'),
           word('Лілі'),
           build('Алла', ['ло', 'ле']),
           build('Елла', ['ал', 'ло']),
@@ -239,7 +241,7 @@ export const WEEK_1: Day[] = [
         adultNote:
           'Перші фрази з двох слів: «у Олі», «Ло-ла ли-ла». Між словами - велика відстань: прочитали одне слово, вдихнули, читаємо наступне. Фрази й складаємо: скажіть фразу по складах, а Майя складе її слово за словом.',
         exercises: [
-          find('Л', ['Л', 'А', 'Е'], 'lower'),
+          say('Л', 'lower'),
           word('Улі'),
           word('у Олі'),
           word('у Лоли'),
@@ -272,7 +274,7 @@ export const WEEK_1: Day[] = [
         adultNote:
           'Новий звук [м]: протяжно, губки разом, «м-м-м», як коли щось смачне. Не кажіть «ем». Тягніть [м] і без паузи переходьте в голосну: «м-м-ма».',
         exercises: [
-          bySound('Л', ['Л', 'А', 'О']),
+          say('Л'),
           intro('М'),
           find('М', ['М', 'Л']),
           bySound('М', ['М', 'Л', 'А']),
@@ -282,7 +284,7 @@ export const WEEK_1: Day[] = [
           syllable('мо'),
           blend('М', 'И'),
           syllable('ми'),
-          match('ма', 'мо', 'ми'),
+          say('М'),
           byEar('мо', 'ма', 'ми'),
         ],
       },
@@ -305,7 +307,7 @@ export const WEEK_1: Day[] = [
           blend('А', 'М'),
           build('мама', ['мо']),
           build('мамо', ['мі', 'ми']),
-          word('ми'),
+          say('М', 'lower'),
           word('Емма'),
           byEar('ам', 'ма', 'ом'),
         ],
@@ -327,10 +329,10 @@ export const WEEK_1: Day[] = [
           build('Міла', ['ма', 'ло']),
           build('лама', ['мо']),
           word('мила'),
-          word('мало'),
+          say('Л', 'lower'),
           word('малі'),
           build('мило', ['ла', 'мо']),
-          word('мале'),
+          say('М'),
           byEar('мило', 'мила', 'мало'),
         ],
       },
@@ -352,7 +354,7 @@ export const WEEK_1: Day[] = [
         sticker: '🐍',
         adultNote: 'Новий звук [с] - як змійка: «с-с-с». Не кажіть «ес». Тягніть [с] і без паузи переходьте в голосну: «с-с-са».',
         exercises: [
-          bySound('М', ['М', 'Л', 'О']),
+          say('М'),
           intro('С'),
           find('С', ['С', 'О']),
           bySound('С', ['С', 'М', 'Л']),
@@ -362,7 +364,7 @@ export const WEEK_1: Day[] = [
           syllable('со'),
           blend('С', 'И'),
           syllable('си'),
-          match('са', 'со', 'си'),
+          say('С'),
           byEar('со', 'са', 'си'),
         ],
       },
@@ -382,7 +384,7 @@ export const WEEK_1: Day[] = [
           syllable('се'),
           match('су', 'сі', 'се'),
           build('оса', ['су']),
-          word('сом'),
+          say('С', 'lower'),
           word('лис'),
           word('ліс'),
           build('сало', ['со', 'лі']),
@@ -405,7 +407,7 @@ export const WEEK_1: Day[] = [
           word('лиса'),
           build('масло', ['мо']),
           word('сама'),
-          word('ліси'),
+          say('М', 'lower'),
           word('Мама мила'),
           build('Ми малі', ['ла', 'мо']),
           word('Міла сама'),
@@ -434,7 +436,7 @@ export const WEEK_1: Day[] = [
         adultNote:
           'Новий звук [н]: протяжно «н-н-н». Не кажіть «ен». Н і М схожі на слух - нічого страшного, якщо плутаються. Склади тягнемо разом: «н-н-на».',
         exercises: [
-          bySound('С', ['С', 'М', 'О']),
+          say('С'),
           intro('Н'),
           find('Н', ['Н', 'М']),
           byEar('на', 'ма', 'ла'),
@@ -445,7 +447,7 @@ export const WEEK_1: Day[] = [
           syllable('но'),
           blend('Н', 'І'),
           syllable('ні'),
-          match('на', 'но', 'ні'),
+          say('Н'),
         ],
       },
       {
@@ -464,7 +466,7 @@ export const WEEK_1: Day[] = [
           syllable('не'),
           match('ни', 'ну', 'не'),
           word('сон'),
-          word('ніс'),
+          say('Н', 'lower'),
           build('сіно', ['на', 'со']),
           build('Ніна', ['но', 'ни']),
           build('сани', ['со']),
@@ -484,7 +486,7 @@ export const WEEK_1: Day[] = [
         exercises: [
           find('Н', ['Н', 'И', 'М'], 'lower'),
           word('ананас'),
-          word('Олена'),
+          say('С', 'lower'),
           word('налила'),
           match('на', 'ма', 'ла', 'са'),
           word('Ніна мала'),
@@ -515,7 +517,7 @@ export const WEEK_1: Day[] = [
         adultNote:
           'Новий звук [к]: коротко, як крапелька - «к!». Не додавайте «а» в кінці. [к] не протягнеш, тож одразу стрибаємо в голосну і тягнемо її: «ко-о-о».',
         exercises: [
-          bySound('Н', ['Н', 'М', 'Л']),
+          say('Н'),
           intro('К'),
           find('К', ['К', 'Н']),
           byEar('ко', 'ок', 'кі'),
@@ -526,7 +528,7 @@ export const WEEK_1: Day[] = [
           syllable('ка'),
           blend('К', 'І'),
           syllable('кі'),
-          match('ко', 'ка', 'кі'),
+          say('К'),
         ],
       },
       {
@@ -547,7 +549,7 @@ export const WEEK_1: Day[] = [
           build('коло', ['ка']),
           build('кіно', ['ко', 'на']),
           build('сумка', ['ма']),
-          word('лук'),
+          say('К', 'lower'),
           build('миска', ['ма', 'ко']),
           byEar('маска', 'миска', 'масло'),
           word('кулак'),
@@ -569,7 +571,7 @@ export const WEEK_1: Day[] = [
           word('калина'),
           build('носок', ['на']),
           word('колесо'),
-          word('кекс'),
+          say('К'),
           word('Сокіл у лісі'),
           build('Молоко Мілі', ['ма', 'ли']),
           build('У мами сумка', ['мо', 'ку']),

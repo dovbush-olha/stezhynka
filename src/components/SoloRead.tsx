@@ -14,9 +14,9 @@ type Phase = 'idle' | 'starting' | 'recording';
 /**
  * Дитина грається сама і читає вголос. Якщо дорослий увімкнув запис читання,
  * дитина записує себе, одразу чує свій голос, а дорослий послухає й відмітить потім.
- * Без мікрофона - звичайна зірочка «Прочитала!».
+ * Без мікрофона - звичайна зірочка «Прочитала!». Так само дитина каже звук букви (`say`).
  */
-export function SoloRead({ text, onDone }: { text: string; onDone: () => void }) {
+export function SoloRead({ text, onDone, say = false }: { text: string; onDone: () => void; /** Дитина каже звук букви, а не читає. */ say?: boolean }) {
   const { recordReading } = useProgress().settings;
   const [phase, setPhase] = useState<Phase>('idle');
   const [failed, setFailed] = useState(false);
@@ -33,7 +33,7 @@ export function SoloRead({ text, onDone }: { text: string; onDone: () => void })
     };
   }, []);
 
-  if (!recordReading || !canRecord() || failed) return <SoloReadButton onDone={onDone} />;
+  if (!recordReading || !canRecord() || failed) return <SoloReadButton onDone={onDone} say={say} />;
 
   const start = async () => {
     setPhase('starting');
@@ -79,7 +79,7 @@ export function SoloRead({ text, onDone }: { text: string; onDone: () => void })
       <span className="solo-read__star" aria-hidden="true">
         🎙️
       </span>
-      Читаю!
+      {say ? 'Кажу!' : 'Читаю!'}
     </button>
   );
 }

@@ -217,21 +217,7 @@ function letterOf(state: ProgressState, id: LetterId, today: string): LetterProg
 
 export function applyExerciseResult(state: ProgressState, result: ExerciseResult, today = todayISO()): ProgressState {
   let next: ProgressState = { ...state, stars: state.stars + 1 };
-  if (result.letters?.length) {
-    const letters = { ...next.letters };
-    for (const o of result.letters) {
-      const cur = letterOf(next, o.id, today);
-      const review = nextReview(cur, o.firstTry, today);
-      letters[o.id] = {
-        ...cur,
-        ...review,
-        seen: cur.seen + 1,
-        firstTry: cur.firstTry + (o.firstTry ? 1 : 0),
-        recent: [...cur.recent, o.firstTry].slice(-RECENT_WINDOW),
-      };
-    }
-    next = { ...next, letters };
-  }
+  for (const o of result.letters ?? []) next = logLetter(next, o, today);
   if (result.items?.length) {
     const review = { ...next.review };
     for (const o of result.items) review[o.text] = nextReview(review[o.text] ?? { box: 1, due: today }, o.firstTry, today);
@@ -239,6 +225,20 @@ export function applyExerciseResult(state: ProgressState, result: ExerciseResult
   }
   if (result.reading) next = logReading(next, result.reading.text, result.reading.alone, today);
   return next;
+}
+
+/** Одна відповідь про букву: оновлює статистику й інтервал повторення. */
+export function logLetter(state: ProgressState, o: LetterOutcome, today = todayISO()): ProgressState {
+  const cur = letterOf(state, o.id, today);
+  const review = nextReview(cur, o.firstTry, today);
+  const updated: LetterProgress = {
+    ...cur,
+    ...review,
+    seen: cur.seen + 1,
+    firstTry: cur.firstTry + (o.firstTry ? 1 : 0),
+    recent: [...cur.recent, o.firstTry].slice(-RECENT_WINDOW),
+  };
+  return { ...state, letters: { ...state.letters, [o.id]: updated } };
 }
 
 export function logReading(state: ProgressState, text: string, alone: boolean, today = todayISO()): ProgressState {
