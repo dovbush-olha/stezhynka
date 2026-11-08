@@ -442,6 +442,19 @@
   grid-area: actions;
   display: flex;
   gap: 6px;
+  min-width: 0;
+}
+
+/* Кнопки ділять ширину плитки порівну, щоб 🎙️ ▶ 🗑 вміщалися у вузькій колонці на телефоні. */
+.rec-tile__actions .chip {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 64px;
+  padding-inline: 4px;
+}
+
+.rec-tile__actions .chip--rec {
+  max-width: none;
 }
 
 .chip:disabled {

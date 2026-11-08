@@ -58,7 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'day',
   helper: 'fox',
   mode: 'solo',
-  recordReading: false,
+  recordReading: true,
   openHints: true,
 };
 

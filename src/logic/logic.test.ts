@@ -376,11 +376,11 @@ describe('записи читання для дорослого', () => {
     expect(overflow([item('a', 1)], 2)).toEqual([]);
   });
 
-  it('запис читання вимкнений, доки дорослий його не ввімкне, і переживає перезавантаження', () => {
-    expect(createInitialState(TODAY).settings.recordReading).toBe(false);
-    const on = updateSettings(createInitialState(TODAY), { recordReading: true });
-    expect(normalizeState(JSON.parse(JSON.stringify(on)), TODAY).settings.recordReading).toBe(true);
-    expect(normalizeState({ ...on, settings: { recordReading: 'так' } }, TODAY).settings.recordReading).toBe(false);
+  it('запис читання увімкнений, доки дорослий його не вимкне, і переживає перезавантаження', () => {
+    expect(createInitialState(TODAY).settings.recordReading).toBe(true);
+    const off = updateSettings(createInitialState(TODAY), { recordReading: false });
+    expect(normalizeState(JSON.parse(JSON.stringify(off)), TODAY).settings.recordReading).toBe(false);
+    expect(normalizeState({ ...off, settings: { recordReading: 'так' } }, TODAY).settings.recordReading).toBe(true);
   });
 });
 
