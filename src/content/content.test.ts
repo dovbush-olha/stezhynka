@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { LETTERS, NOT_YET_STUDIED, VOWELS_FIRST, UKRAINIAN_ALPHABET, lettersOf } from './alphabet';
 import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN } from './phrases';
 import { validateMission } from './validate';
-import { WEEK_1, WEEK_1_MISSIONS } from './week1';
-import type { Exercise } from './types';
-import { ALL_WORDS, getWord, isPhrase } from './words';
+import { COURSE, COURSE_MISSIONS, LEGACY_MISSION_IDS } from './course';
+import type { Exercise, LetterId } from './types';
+import { ALL_WORDS, getWord, isPhrase, syllablesOf } from './words';
 
 describe('абетка', () => {
   it('містить 33 українські букви кирилицею', () => {
@@ -44,10 +44,9 @@ describe('банк слів', () => {
   });
 });
 
-describe('перший тиждень', () => {
-  it('має 7 днів: перша місія дня навчає, наступні закріплюють', () => {
-    expect(WEEK_1).toHaveLength(7);
-    WEEK_1.forEach((day, i) => {
+describe('план місій', () => {
+  it('день має 2-3 місії: перша місія дня навчає, наступні закріплюють', () => {
+    COURSE.forEach((day, i) => {
       expect(day.day).toBe(i + 1);
       expect(day.missions.length).toBeGreaterThanOrEqual(2);
       expect(day.missions.length).toBeLessThanOrEqual(3);
@@ -57,24 +56,53 @@ describe('перший тиждень', () => {
     });
   });
 
-  it('ідентифікатори місій унікальні', () => {
-    const ids = WEEK_1_MISSIONS.map((m) => m.id);
+  it('ідентифікатори місій і наліпки унікальні', () => {
+    const ids = COURSE_MISSIONS.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+    const stickers = COURSE_MISSIONS.map((m) => m.sticker);
+    expect(new Set(stickers).size).toBe(stickers.length);
   });
 
+  it('старі ідентифікатори ведуть на наявні місії, кожен на свою', () => {
+    const targets = Object.values(LEGACY_MISSION_IDS);
+    expect(new Set(targets).size).toBe(targets.length);
+    for (const id of targets) expect(COURSE_MISSIONS.some((m) => m.id === id), id).toBe(true);
+  });
+
+  /** Дні кожної приголосної: від дня, що її вводить, до дня наступної. */
+  const consonantDays = (() => {
+    const groups = new Map<LetterId, typeof COURSE>();
+    let current: LetterId | undefined;
+    for (const day of COURSE) {
+      const fresh = day.missions[0].newLetters?.find((l) => LETTERS[l].kind === 'consonant');
+      if (fresh) current = fresh;
+      if (current) groups.set(current, [...(groups.get(current) ?? []), day]);
+    }
+    return groups;
+  })();
+
   it('перший день - лише голосні, далі першою приголосною йде Л', () => {
-    for (const m of WEEK_1[0].missions) expect([...m.requires].sort()).toEqual([...VOWELS_FIRST].sort());
-    for (const m of WEEK_1.slice(1, 3).flatMap((d) => d.missions)) {
+    for (const m of COURSE[0].missions) expect([...m.requires].sort()).toEqual([...VOWELS_FIRST].sort());
+    expect([...consonantDays.keys()]).toEqual(['Л', 'М', 'С', 'Н', 'К']);
+    for (const m of consonantDays.get('Л')!.flatMap((d) => d.missions)) {
       expect([...m.requires].sort()).toEqual([...VOWELS_FIRST, 'Л'].sort());
     }
   });
 
-  const exercisesOf = (day: (typeof WEEK_1)[number]) => day.missions.flatMap((m) => m.exercises);
+  it('кожна приголосна має стільки ж днів і місій, скільки Л', () => {
+    const l = consonantDays.get('Л')!;
+    for (const [letter, days] of consonantDays) {
+      expect(days.length, letter).toBe(l.length);
+      expect(days.flatMap((d) => d.missions).length, letter).toBe(l.flatMap((d) => d.missions).length);
+    }
+  });
+
+  const exercisesOf = (day: (typeof COURSE)[number]) => day.missions.flatMap((m) => m.exercises);
   const singleWords = (exs: Exercise[]) =>
     exs.flatMap((e) => ((e.kind === 'read-word' || e.kind === 'build-word') && !isPhrase(getWord(e.word)) ? [e.word] : []));
 
   it('нову приголосну багато разів з’єднуємо з голосними, перш ніж читати слова', () => {
-    for (const day of WEEK_1.filter((d) => d.missions[0].newLetters?.some((l) => LETTERS[l].kind === 'consonant'))) {
+    for (const day of COURSE.filter((d) => d.missions[0].newLetters?.some((l) => LETTERS[l].kind === 'consonant'))) {
       const exs = exercisesOf(day);
       expect(exs.filter((e) => e.kind === 'blend').length, `день ${day.day}`).toBeGreaterThanOrEqual(4);
       expect(exs.filter((e) => e.kind === 'read-syllable').length, `день ${day.day}`).toBeGreaterThanOrEqual(6);
@@ -83,14 +111,30 @@ describe('перший тиждень', () => {
     }
   });
 
-  it('кожен день з приголосною має багато окремих слів (від дня 3)', () => {
-    for (const day of WEEK_1.slice(2)) {
+  it('кожен день з приголосною має багато окремих слів (крім першого дня з Л)', () => {
+    for (const day of COURSE.slice(2)) {
       expect(new Set(singleWords(exercisesOf(day))).size, `день ${day.day}`).toBeGreaterThanOrEqual(6);
     }
   });
 
+  it('перші два дні кожної приголосної - лише короткі слова, до двох складів', () => {
+    for (const [letter, days] of consonantDays) {
+      for (const day of days.slice(0, 2)) {
+        for (const w of singleWords(exercisesOf(day))) {
+          expect(syllablesOf(getWord(w)).length, `${letter}, день ${day.day}: «${w}»`).toBeLessThanOrEqual(2);
+        }
+      }
+    }
+  });
+
+  it('щодня дитина сама згадує звук И', () => {
+    for (const day of COURSE) {
+      expect(exercisesOf(day).some((e) => e.kind === 'say-sound' && e.letter === 'И'), `день ${day.day}`).toBe(true);
+    }
+  });
+
   it('фрази - лише в останній місії дня і після багатьох окремих слів', () => {
-    for (const day of WEEK_1) {
+    for (const day of COURSE) {
       day.missions.forEach((m, i) => {
         const firstPhrase = m.exercises.findIndex((e) => (e.kind === 'read-word' || e.kind === 'build-word') && isPhrase(getWord(e.word)));
         if (firstPhrase === -1) return;
@@ -102,7 +146,7 @@ describe('перший тиждень', () => {
   });
 
   it('фрази й складаємо зі складів: щодня з фразами - хоча б дві', () => {
-    for (const day of WEEK_1) {
+    for (const day of COURSE) {
       const exs = exercisesOf(day);
       const phrases = exs.filter((e) => e.kind === 'read-word' && isPhrase(getWord(e.word)));
       if (!phrases.length) continue;
@@ -112,34 +156,34 @@ describe('перший тиждень', () => {
   });
 
   it('щодня від дня 2 складаємо хоча б три слова чи фрази', () => {
-    for (const day of WEEK_1.slice(1)) {
+    for (const day of COURSE.slice(1)) {
       expect(exercisesOf(day).filter((e) => e.kind === 'build-word').length, `день ${day.day}`).toBeGreaterThanOrEqual(3);
     }
   });
 
   it('від дня 2 у кожній місії є «послухай і вибери»', () => {
-    for (const m of WEEK_1.slice(1).flatMap((d) => d.missions)) {
+    for (const m of COURSE.slice(1).flatMap((d) => d.missions)) {
       expect(m.exercises.some((e) => e.kind === 'pick-by-ear'), m.id).toBe(true);
     }
   });
 
-  it('з Л є слова без подвоєних букв: кожен склад - два звуки', () => {
-    const lWords = new Set(singleWords(WEEK_1.slice(1, 3).flatMap(exercisesOf)));
+  it('з Л багато слів без подвоєних букв: кожен склад - два звуки', () => {
+    const lWords = new Set(singleWords(consonantDays.get('Л')!.flatMap(exercisesOf)));
     const plain = [...lWords].filter((w) => !/(.)\1/iu.test(w));
-    expect(plain.length).toBeGreaterThanOrEqual(5);
+    expect(plain.length).toBeGreaterThanOrEqual(10);
   });
 
-  it.each(WEEK_1_MISSIONS.map((m) => [m.id, m] as const))('%s: усі слова й склади з доступних букв', (_id, m) => {
+  it.each(COURSE_MISSIONS.map((m) => [m.id, m] as const))('%s: усі слова й склади з доступних букв', (_id, m) => {
     expect(validateMission(m)).toEqual([]);
   });
 
   it('нові букви з’являються поступово і лише з плану', () => {
-    const introduced = WEEK_1_MISSIONS.flatMap((m) => m.newLetters ?? []);
+    const introduced = COURSE_MISSIONS.flatMap((m) => m.newLetters ?? []);
     expect(introduced).toEqual(['Е', 'И', 'Л', 'М', 'С', 'Н', 'К']);
   });
 
   it('використовує всі види вправ', () => {
-    const kinds = new Set(WEEK_1_MISSIONS.flatMap((m) => m.exercises.map((e) => e.kind)));
+    const kinds = new Set(COURSE_MISSIONS.flatMap((m) => m.exercises.map((e) => e.kind)));
     // pick-picture не пишеться вручну - так перетворюється читання, коли дитина грається сама
     expect([...kinds, 'pick-picture'].sort()).toEqual(Object.keys(INSTRUCTIONS).sort());
   });

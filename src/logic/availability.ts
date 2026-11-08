@@ -1,6 +1,6 @@
 import { BASE_LETTERS, PLANNED_LETTERS, type LetterId } from '../content/alphabet';
 import type { Mission } from '../content/types';
-import { WEEK_1_MISSIONS } from '../content/week1';
+import { COURSE_MISSIONS } from '../content/course';
 import type { ProgressState } from './progress';
 
 export type MissionAvailability = 'done' | 'available' | 'needs-letters' | 'locked';
@@ -16,7 +16,7 @@ export function missingLetters(state: ProgressState, mission: Mission): LetterId
   return mission.requires.filter((l) => !state.unlocked.includes(l));
 }
 
-export function missionAvailability(state: ProgressState, mission: Mission, missions = WEEK_1_MISSIONS): MissionAvailability {
+export function missionAvailability(state: ProgressState, mission: Mission, missions = COURSE_MISSIONS): MissionAvailability {
   if (state.missions[mission.id]?.completions) return 'done';
   const index = missions.findIndex((m) => m.id === mission.id);
   const prev = index > 0 ? missions[index - 1] : undefined;
@@ -29,13 +29,13 @@ export function missionAvailability(state: ProgressState, mission: Mission, miss
 export type Recommendation =
   | { kind: 'mission'; mission: Mission; reason: 'next' | 'repeat' }
   | { kind: 'practice'; reason: 'needs-letters'; letters: LetterId[]; waitingMission: Mission }
-  | { kind: 'practice'; reason: 'week-done' }
+  | { kind: 'practice'; reason: 'all-done' }
   /** Новий день або кілька місій поспіль: спершу повторюємо вже знайоме. */
   | { kind: 'practice'; reason: 'review'; nextMission: Mission };
 
-export function recommend(state: ProgressState, missions = WEEK_1_MISSIONS): Recommendation {
+export function recommend(state: ProgressState, missions = COURSE_MISSIONS): Recommendation {
   const index = missions.findIndex((m) => !state.missions[m.id]?.completions);
-  if (index === -1) return { kind: 'practice', reason: 'week-done' };
+  if (index === -1) return { kind: 'practice', reason: 'all-done' };
   const next = missions[index];
   const prev = index > 0 ? missions[index - 1] : undefined;
   const prevRecord = prev ? state.missions[prev.id] : undefined;
@@ -63,7 +63,7 @@ export interface UnlockAdvice {
  * Зазвичай вона відкривається сама після попереднього дня (див. autoUnlockLetters);
  * порада про готовність потрібна, коли дорослий букву сховав.
  */
-export function adviseNextLetter(state: ProgressState, missions = WEEK_1_MISSIONS): UnlockAdvice | undefined {
+export function adviseNextLetter(state: ProgressState, missions = COURSE_MISSIONS): UnlockAdvice | undefined {
   const letter = PLANNED_LETTERS.find((l) => !state.unlocked.includes(l));
   if (!letter) return undefined;
 

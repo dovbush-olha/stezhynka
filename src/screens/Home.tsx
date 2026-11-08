@@ -3,7 +3,7 @@ import { usePendingReadings } from '../audio/readings';
 import { HELPERS, helperName } from '../content/helpers';
 import { CHILD_NAME, GREETINGS, pick } from '../content/phrases';
 import type { Mission } from '../content/types';
-import { WEEK_1 } from '../content/week1';
+import { COURSE } from '../content/course';
 import { Helper } from '../components/Helper';
 import { ParentGate } from '../components/ParentGate';
 import { ColoredText, Modal } from '../components/ui';
@@ -100,8 +100,8 @@ export function Home({ onStart, onParent }: Props) {
             <>
               <h2 className="hero__title">Повторення в лісі</h2>
               <p className="hero__note">
-                {rec.reason === 'week-done'
-                  ? 'Тиждень пройдено! Граймо, щоб букви не забувалися.'
+                {rec.reason === 'all-done'
+                  ? 'Усю стежку пройдено! Граймо, щоб букви не забувалися.'
                   : rec.reason === 'review'
                     ? 'Спершу повторимо те, що вже вміємо, а тоді - далі стежкою!'
                     : 'Пограймо з буквами, які вже знаємо!'}
@@ -123,7 +123,7 @@ export function Home({ onStart, onParent }: Props) {
       <section className="map" aria-label="Лісова мапа">
         <h2 className="section-title">Лісова мапа</h2>
         <ol className="map__days">
-          {WEEK_1.map((day) => {
+          {COURSE.map((day) => {
             const states = day.missions.map((m) => missionAvailability(progress, m));
             const dayDone = states.every((s) => s === 'done');
             // Буква, яку сховав дорослий. Майбутні дні просто чекають своєї черги.

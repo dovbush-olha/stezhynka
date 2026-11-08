@@ -116,7 +116,7 @@ export function validateMission(m: Mission): string[] {
   const errors: string[] = [];
   const known = new Set<LetterId>([...BASE_LETTERS, ...PLANNED_LETTERS]);
   for (const l of m.requires) {
-    if (!known.has(l)) errors.push(`${m.id}: місія вимагає букву ${l}, якої немає в плані тижня`);
+    if (!known.has(l)) errors.push(`${m.id}: місія вимагає букву ${l}, якої немає в плані`);
   }
   for (const l of m.newLetters ?? []) {
     if (!m.requires.includes(l)) errors.push(`${m.id}: нова буква ${l} не входить у requires`);

@@ -1,7 +1,7 @@
 import { BASE_LETTERS, LETTERS, LOOKALIKES, isReadableWith, lettersOf, toLower, type LetterId } from '../content/alphabet';
 import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
-import { WEEK_1_MISSIONS } from '../content/week1';
+import { COURSE_MISSIONS } from '../content/course';
 import { PRACTICE_ID, type ProgressState } from './progress';
 import { dueItems, isWordItem, textsOf } from './review';
 import { compareCloseness, closeness } from './similar';
@@ -205,7 +205,7 @@ const NOT_DUE = 1e6;
  * і слова та фрази з банку слів.
  * Нову букву наступної місії не чіпаємо: з нею знайомить сама місія.
  */
-export function buildPracticeMission(state: ProgressState, today: string, rng: Rng, missions: Mission[] = WEEK_1_MISSIONS): Mission {
+export function buildPracticeMission(state: ProgressState, today: string, rng: Rng, missions: Mission[] = COURSE_MISSIONS): Mission {
   const next = missions.find((m) => !state.missions[m.id]?.completions);
   const held = (next?.newLetters ?? []).filter((l) => (state.letters[l]?.seen ?? 0) === 0);
   const letters = state.unlocked.filter((l) => !held.includes(l));

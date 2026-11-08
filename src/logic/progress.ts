@@ -1,7 +1,7 @@
 import { BASE_LETTERS, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, lettersOf, type LetterId } from '../content/alphabet';
 import { isHelperId, type HelperId } from '../content/helpers';
 import type { Mission } from '../content/types';
-import { WEEK_1_MISSIONS } from '../content/week1';
+import { COURSE_MISSIONS, LEGACY_MISSION_IDS } from '../content/course';
 import type { ItemOutcome } from './review';
 import { nextReview, type ReviewItem } from './srs';
 
@@ -186,13 +186,25 @@ export function normalizeState(raw: unknown, today = todayISO()): ProgressState 
       reading: r.reading && typeof r.reading === 'object' ? r.reading : {},
       review: normalizeReview(r.review),
       sinceReview: typeof r.sinceReview === 'number' && r.sinceReview >= 0 ? Math.floor(r.sinceReview) : 0,
-      missions: r.missions && typeof r.missions === 'object' ? r.missions : {},
+      missions: normalizeMissions(r.missions),
       stickers: Array.isArray(r.stickers) ? r.stickers : [],
       stars: typeof r.stars === 'number' && r.stars >= 0 ? Math.floor(r.stars) : 0,
       settings: normalizeSettings(r.settings),
     },
     today,
   );
+}
+
+/** Прогрес зі старими ідентифікаторами місій переносимо на нинішні; нинішній запис важливіший. */
+function normalizeMissions(raw: unknown): Record<string, MissionRecord> {
+  const missions: Record<string, MissionRecord> = {};
+  if (!raw || typeof raw !== 'object') return missions;
+  for (const [id, record] of Object.entries(raw as Record<string, MissionRecord>)) {
+    const current = LEGACY_MISSION_IDS[id];
+    if (!current) missions[id] = record;
+    else if (!(current in (raw as object))) missions[current] = record;
+  }
+  return missions;
 }
 
 function normalizeReview(raw: unknown): Record<string, ReviewItem> {
@@ -294,7 +306,7 @@ export function completeMission(state: ProgressState, s: MissionSummary, today =
  * Коли всі місії до наступної пройдено, а їй бракує лише букви з плану (М, С, Н, К),
  * програма відкриває цю букву сама. Букву, яку дорослий сховав, повторно не відкриває.
  */
-export function autoUnlockLetters(state: ProgressState, today = todayISO(), missions: Mission[] = WEEK_1_MISSIONS): ProgressState {
+export function autoUnlockLetters(state: ProgressState, today = todayISO(), missions: Mission[] = COURSE_MISSIONS): ProgressState {
   const next = missions.find((m) => !state.missions[m.id]?.completions);
   if (!next) return state;
   const missing = next.requires.filter((l) => !state.unlocked.includes(l));

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, toLower, toUpper, type LetterId } from '../content/alphabet';
 import { CHILD_NAME } from '../content/phrases';
 import type { Mission } from '../content/types';
-import { WEEK_1, WEEK_1_MISSIONS } from '../content/week1';
+import { COURSE, COURSE_MISSIONS } from '../content/course';
 import { clearReadings, playReading, removeReading, usePendingReadings } from '../audio/readings';
 import { canRecord, deleteRecording, playRecording, requestMicrophone, saveRecording, soundKey, startRecording, useRecordingKeys } from '../audio/recordings';
 import { HELPERS } from '../content/helpers';
@@ -162,11 +162,11 @@ function LettersTab() {
             <p>{advice.message}</p>
           </div>
         ) : (
-          <p className="panel__hint">Усі букви першого тижня відкрито. Далі можна додавати букви, які вчать у школі.</p>
+          <p className="panel__hint">Усі букви з місіями відкрито. Далі можна додавати букви, які вчать у школі.</p>
         )}
         {lockedPlanned.length > 0 && (
           <>
-            <h3 className="panel__subtitle">План першого тижня</h3>
+            <h3 className="panel__subtitle">Букви з місіями</h3>
             <div className="unlock-grid">
               {lockedPlanned.map((l) => (
                 <button key={l} type="button" className="unlock-tile unlock-tile--planned" onClick={() => setConfirm({ letter: l, action: 'unlock' })}>
@@ -240,9 +240,9 @@ function LettersTab() {
   );
 }
 
-function weekSyllables(): string[] {
+function courseSyllables(): string[] {
   const set = new Set<string>();
-  for (const m of WEEK_1_MISSIONS) {
+  for (const m of COURSE_MISSIONS) {
     for (const e of m.exercises) {
       if (e.kind === 'read-syllable') set.add(e.syllable);
       if (e.kind === 'blend') set.add(toLower(e.sounds.join('')));
@@ -255,7 +255,7 @@ function weekSyllables(): string[] {
 function ReadingTab() {
   const progress = useProgress();
   const items = useMemo(() => {
-    const syllables = new Set([...weekSyllables(), ...availableSyllables(progress.unlocked)]);
+    const syllables = new Set([...courseSyllables(), ...availableSyllables(progress.unlocked)]);
     const readable = [...syllables].filter((s) => [...s.toLocaleUpperCase('uk-UA')].every((l) => progress.unlocked.includes(l as LetterId)));
     const extra = Object.keys(progress.reading).filter((k) => !syllables.has(k));
     return { syllables: readable.sort((a, b) => a.localeCompare(b, 'uk')), words: extra.sort((a, b) => a.localeCompare(b, 'uk')) };
@@ -394,7 +394,7 @@ function formatWhen(iso: string) {
 
 function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
   const progress = useProgress();
-  const done = WEEK_1_MISSIONS.filter((m) => progress.missions[m.id]?.completions).length;
+  const done = COURSE_MISSIONS.filter((m) => progress.missions[m.id]?.completions).length;
   const letterStats = progress.unlocked.map((l) => progress.letters[l]).filter(Boolean);
   const seen = letterStats.reduce((a, l) => a + (l?.seen ?? 0), 0);
   const first = letterStats.reduce((a, l) => a + (l?.firstTry ?? 0), 0);
@@ -408,7 +408,7 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
         <div className="stat">
           <span className="stat__value">
             {done}
-            <small>/{WEEK_1_MISSIONS.length}</small>
+            <small>/{COURSE_MISSIONS.length}</small>
           </span>
           <span className="stat__label">місій пройдено</span>
         </div>
@@ -441,7 +441,7 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
           сам запропонує повторити.
         </p>
         <div className="day-list">
-          {WEEK_1.map((day) => (
+          {COURSE.map((day) => (
             <article key={day.day} className="day-row">
               <h3 className="day-row__title">
                 День {day.day}. {day.title}
@@ -780,7 +780,7 @@ function Recordings() {
 function SayRecordings() {
   const progress = useProgress();
   const keys = useRecordingKeys();
-  const { syllables, words } = useMemo(() => voiceItems(voiceLetters(progress.unlocked), WEEK_1_MISSIONS), [progress.unlocked]);
+  const { syllables, words } = useMemo(() => voiceItems(voiceLetters(progress.unlocked), COURSE_MISSIONS), [progress.unlocked]);
   const count = (list: string[]) => list.filter((t) => keys.has(sayKey(t))).length;
   const tiles = (list: string[], what: string) =>
     list.map<RecItem>((t) => ({
