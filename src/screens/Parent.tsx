@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, toLower, toUpper, type LetterId } from '../content/alphabet';
-import { CHILD_NAME } from '../content/phrases';
+import { personalize } from '../content/child';
+import { ChildForm } from '../components/ChildForm';
 import type { Mission } from '../content/types';
 import { COURSE, COURSE_MISSIONS } from '../content/course';
 import { clearReadings, playReading, removeReading, usePendingReadings } from '../audio/readings';
@@ -24,7 +25,7 @@ import {
   type LetterStatus,
   type Settings,
 } from '../logic/progress';
-import { resetProgress, updateProgress, useProgress } from '../store/progressStore';
+import { resetProgress, updateProgress, useChild, useProgress } from '../store/progressStore';
 import { plural } from '../components/text';
 import type { PendingReading } from '../logic/readingQueue';
 
@@ -85,6 +86,8 @@ export function Parent({ onBack, onStart }: Props) {
 const STATUSES: LetterStatus[] = ['knows', 'sometimes', 'learning'];
 
 function LettersTab() {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const advice = adviseNextLetter(progress);
   const [confirm, setConfirm] = useState<{ letter: LetterId; action: 'unlock' | 'lock' } | null>(null);
@@ -95,9 +98,9 @@ function LettersTab() {
   return (
     <>
       <section className="panel">
-        <h2 className="panel__title">Букви, які {CHILD_NAME} вже вчить</h2>
+        <h2 className="panel__title">Букви, які {child.name} вже вчить</h2>
         <p className="panel__hint">
-          Позначте, як {CHILD_NAME} знає кожну букву. Програма лише підказує на основі останніх відповідей - рішення за вами.
+          Позначте, як {child.name} знає кожну букву. Програма лише підказує на основі останніх відповідей - рішення за вами.
         </p>
         <div className="letter-cards">
           {progress.unlocked.map((l) => {
@@ -159,7 +162,7 @@ function LettersTab() {
             <span className="advice__icon" aria-hidden="true">
               {advice.ready ? '🌟' : '🌱'}
             </span>
-            <p>{advice.message}</p>
+            <p>{t(advice.message)}</p>
           </div>
         ) : (
           <p className="panel__hint">Усі букви з місіями відкрито. Далі можна додавати букви, які вчать у школі.</p>
@@ -226,7 +229,7 @@ function LettersTab() {
                 стануть доступними.
               </p>
               {NOT_YET_STUDIED.includes(confirm.letter) && (
-                <p className="warning">Цю букву в школі ще не вивчали. Відкривайте, лише якщо {CHILD_NAME} вже з нею знайома.</p>
+                <p className="warning">Цю букву в школі ще не вивчали. {t('Відкривайте, лише якщо {name} вже з нею {знайома|знайомий}.')}</p>
               )}
             </>
           ) : (
@@ -253,6 +256,8 @@ function courseSyllables(): string[] {
 }
 
 function ReadingTab() {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const items = useMemo(() => {
     const syllables = new Set([...courseSyllables(), ...availableSyllables(progress.unlocked)]);
@@ -271,16 +276,16 @@ function ReadingTab() {
         <span className="read-row__stats">
           {total ? (
             <>
-              <b>{log!.alone}</b> сама · <b>{log!.helped}</b> з допомогою
-              <small>востаннє: {log!.last === 'alone' ? 'сама' : 'з допомогою'}</small>
+              <b>{log!.alone}</b> {t('{сама|сам}')} · <b>{log!.helped}</b> з допомогою
+              <small>востаннє: {log!.last === 'alone' ? t('{сама|сам}') : 'з допомогою'}</small>
             </>
           ) : (
-            'ще не читала'
+            t('ще не {читала|читав}')
           )}
         </span>
         <span className="read-row__actions">
           <button type="button" className="chip chip--alone" onClick={() => updateProgress((s) => logReading(s, text, true, todayISO()))}>
-            ⭐ Сама
+            ⭐ {t('{Сама|Сам}')}
           </button>
           <button type="button" className="chip" onClick={() => updateProgress((s) => logReading(s, text, false, todayISO()))}>
             🤝 Разом
@@ -294,9 +299,9 @@ function ReadingTab() {
     <>
       <ReadingReview />
       <section className="panel">
-      <h2 className="panel__title">Чи читає {CHILD_NAME} склади без допомоги</h2>
+      <h2 className="panel__title">Чи читає {child.name} склади без допомоги</h2>
       <p className="panel__hint">
-        Під час місій ви відмічаєте результат кнопками «Прочитала сама» / «Прочитали разом». Тут можна побачити підсумок і додати
+        Під час місій ви відмічаєте результат кнопками «{t('{Прочитала сама|Прочитав сам}')}» / «Прочитали разом». Тут можна побачити підсумок і додати
         відмітку, якщо читали в книжці чи зошиті.
       </p>
       <ul className="read-list">{items.syllables.map(row)}</ul>
@@ -313,6 +318,8 @@ function ReadingTab() {
 
 /** Записи того, як дитина читала сама: дорослий слухає й відмічає, і відмітка йде в журнал читання. */
 function ReadingReview() {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const { recordReading, mode } = useProgress().settings;
   const items = usePendingReadings();
   const [busy, setBusy] = useState<string | null>(null);
@@ -335,9 +342,9 @@ function ReadingReview() {
 
   return (
     <section className="panel">
-      <h2 className="panel__title">Послухайте, як {CHILD_NAME} читала сама</h2>
+      <h2 className="panel__title">{t('Послухайте, як {name} {читала сама|читав сам}')}</h2>
       <p className="panel__hint">
-        Натисніть ▶ і відмітьте, чи прочитала правильно. Відмітка потрапить у журнал нижче й допоможе вибирати, що повторювати, а запис
+        Натисніть ▶ і відмітьте, чи {t('{прочитала|прочитав}')} правильно. Відмітка потрапить у журнал нижче й допоможе вибирати, що повторювати, а запис
         видалиться. Записи зберігаються лише на цьому пристрої.
       </p>
       {items.length ? (
@@ -375,7 +382,7 @@ function ReadingReview() {
           ))}
         </ul>
       ) : (
-        <p className="review-empty">Нових записів немає. Вони з’являться, коли {CHILD_NAME} пограється сама.</p>
+        <p className="review-empty">Нових записів немає. {t('Вони з’являться, коли {name} пограється {сама|сам}.')}</p>
       )}
     </section>
   );
@@ -393,6 +400,8 @@ function formatWhen(iso: string) {
 }
 
 function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const done = COURSE_MISSIONS.filter((m) => progress.missions[m.id]?.completions).length;
   const letterStats = progress.unlocked.map((l) => progress.letters[l]).filter(Boolean);
@@ -460,7 +469,7 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
                       <small>
                         {m.goal === 'learn' ? 'вчимося' : 'закріплюємо'} · {m.exercises.length} завдань
                         {rec &&
-                          ` · пройдено ${rec.completions} ${plural(rec.completions, 'раз', 'рази', 'разів')}, востаннє ${formatDate(rec.lastCompletedAt)} · підказки ${Math.round(rec.lastHintRate * 100)}%${rec.lastReadTotal ? ` · сама прочитала ${rec.lastReadAlone}/${rec.lastReadTotal}` : ''}`}
+                          ` · пройдено ${rec.completions} ${plural(rec.completions, 'раз', 'рази', 'разів')}, востаннє ${formatDate(rec.lastCompletedAt)} · підказки ${Math.round(rec.lastHintRate * 100)}%${rec.lastReadTotal ? t(` · {сама прочитала|сам прочитав} ${rec.lastReadAlone}/${rec.lastReadTotal}`) : ''}`}
                       </small>
                     </span>
                     {missing.length ? (
@@ -482,24 +491,31 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
 }
 
 function SettingsTab() {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const { settings } = progress;
   const [confirmReset, setConfirmReset] = useState(false);
   const set = (patch: Partial<Settings>) => updateProgress((s) => updateSettings(s, patch));
   return (
     <>
+      <section className="panel">
+        <h2 className="panel__title">Дитина</h2>
+        <ChildForm initial={child} submitLabel="Зберегти" onSave={(c) => set({ child: c })} />
+      </section>
+
       <section className="panel settings">
-        <h2 className="panel__title">Як грається {CHILD_NAME}</h2>
+        <h2 className="panel__title">Як грається {child.name}</h2>
         <Choice
           title="Хто поруч"
           hint={
             settings.mode === 'solo'
-              ? `Сама: слова перевіряються вибором картинки, склади - ${settings.recordReading ? 'записом читання, який ви послухаєте потім' : 'кнопкою «Прочитала!»'}, звук букви - вашим записом (якщо є).`
-              : 'З дорослим: ви бачите підказки, що сказати, і відмічаєте, чи прочитала сама.'
+              ? t(`{Сама|Сам}: слова перевіряються вибором картинки, склади - ${settings.recordReading ? 'записом читання, який ви послухаєте потім' : 'кнопкою «{Прочитала|Прочитав}!»'}, звук букви - вашим записом (якщо є).`)
+              : t('З дорослим: ви бачите підказки, що сказати, і відмічаєте, чи {прочитала сама|прочитав сам}.')
           }
           value={settings.mode}
           options={[
-            ['solo', '📱 Сама'],
+            ['solo', t('📱 {Сама|Сам}')],
             ['together', '🧑‍🏫 З дорослим'],
           ]}
           onChange={(mode) => set({ mode })}
@@ -602,6 +618,8 @@ function SettingsTab() {
 
 /** Дорослий вмикає запис читання - і одразу дає дозвіл на мікрофон, щоб дитина цього питання не бачила. */
 function RecordReadingSwitch() {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const { recordReading } = useProgress().settings;
   const [error, setError] = useState<string | null>(null);
   const available = canRecord();
@@ -619,9 +637,9 @@ function RecordReadingSwitch() {
     <>
       <label className="switch-row">
         <span>
-          <b>Записувати, як {CHILD_NAME} читає</b>
+          <b>Записувати, як {child.name} читає</b>
           <small>
-            Замість зірочки «Прочитала!» - кнопка 🎙️: {CHILD_NAME} читає вголос і одразу чує себе. Ви послухаєте записи на вкладці
+            Замість зірочки «{t('{Прочитала|Прочитав}')}!» - кнопка 🎙️: {child.name} читає вголос і одразу чує себе. Ви послухаєте записи на вкладці
             «Читання складів» і відмітите, чи правильно. Записи залишаються лише на цьому пристрої.
           </small>
         </span>
@@ -752,6 +770,8 @@ function voiceLetters(unlocked: readonly LetterId[]): LetterId[] {
 
 /** Дорослий записує звуки букв своїм голосом - їх чує дитина, коли грається сама. */
 function Recordings() {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const keys = useRecordingKeys();
   const letters = voiceLetters(progress.unlocked);
@@ -767,7 +787,7 @@ function Recordings() {
     <section className="panel">
       <h2 className="panel__title">Ваш голос для звуків</h2>
       <p className="panel__hint">
-        Коли {CHILD_NAME} грається сама, вона чує звук букви вашим голосом. Натисніть 🎙️, скажіть сам звук (не назву букви):
+        {t('Коли {name} грається {сама, вона|сам, він} чує звук букви вашим голосом.')} Натисніть 🎙️, скажіть сам звук (не назву букви):
         протяжне «м-м-м», коротке «к!». Запис зупиниться сам за 2 секунди. Записано: {done} з {letters.length}.
       </p>
       {!canRecord() && <p className="warning">{HTTPS_WARNING}</p>}
@@ -778,6 +798,7 @@ function Recordings() {
 
 /** Дорослий читає склади й слова - дитина слухає, як правильно, коли просить підказку. */
 function SayRecordings() {
+  const child = useChild();
   const progress = useProgress();
   const keys = useRecordingKeys();
   const { syllables, words } = useMemo(() => voiceItems(voiceLetters(progress.unlocked), COURSE_MISSIONS), [progress.unlocked]);
@@ -793,7 +814,7 @@ function SayRecordings() {
     <section className="panel">
       <h2 className="panel__title">Ваш голос для складів і слів</h2>
       <p className="panel__hint">
-        Під словом у вправі з’явиться 🔊, а склади можна буде торкнути - {CHILD_NAME} почує, як правильно, вашим голосом. Читайте
+        Під словом у вправі з’явиться 🔊, а склади можна буде торкнути - {child.name} почує, як правильно, вашим голосом. Читайте
         чітко й не поспішаючи; склади в слові - злито, без пауз. Запис зупиниться сам за 4 секунди або кнопкою «Стоп».
       </p>
       {!canRecord() && <p className="warning">{HTTPS_WARNING}</p>}

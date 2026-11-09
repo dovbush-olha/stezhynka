@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { helperName } from '../content/helpers';
-import { CHILD_NAME, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION } from '../content/phrases';
+import { personalize } from '../content/child';
+import { INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION } from '../content/phrases';
 import type { Exercise, Mission } from '../content/types';
 import { fanfare, sparkle } from '../audio/audio';
 import { hasRecording, soundKey } from '../audio/recordings';
@@ -16,7 +17,7 @@ import { adaptForSolo, preferRecordedVoice } from '../logic/solo';
 import { sayKey } from '../logic/voice';
 import { getWord, isPhrase } from '../content/words';
 import type { LetterId } from '../content/alphabet';
-import { getProgress, updateProgress, useProgress } from '../store/progressStore';
+import { getProgress, updateProgress, useChild, useProgress } from '../store/progressStore';
 
 interface Props {
   mission: Mission;
@@ -31,6 +32,7 @@ const GOAL_LABEL = { learn: 'Вчимося', reinforce: 'Закріплюємо
 export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
   const progress = useProgress();
   const { readingCase, helper, mode, openHints } = progress.settings;
+  const child = useChild();
   const solo = mode === 'solo';
   const [runId] = useState(() => `${mission.id}-${Date.now()}`);
 
@@ -57,7 +59,7 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
   const current = exercises[index];
   const completed = results.length > index;
   const buildsPhrase = current?.kind === 'build-word' && isPhrase(getWord(current.word));
-  const bubble = feedback?.text ?? (buildsPhrase ? PHRASE_BUILD_INSTRUCTION : current ? INSTRUCTIONS[current.kind] : '');
+  const bubble = personalize(feedback?.text ?? (buildsPhrase ? PHRASE_BUILD_INSTRUCTION : current ? INSTRUCTIONS[current.kind] : ''), child);
   const mood = feedback?.mood ?? 'idle';
 
   const handleComplete = (result: ExerciseResult) => {
@@ -109,10 +111,12 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
           {!solo && (
             <details className="adult-note">
               <summary>Порада для дорослого</summary>
-              <p>{mission.adultNote}</p>
+              <p>{personalize(mission.adultNote, child)}</p>
               <p>
-                Звуки вимовляйте саме як звуки ([м], а не «ем»). Помилки - це нормально: підказки допоможуть, а ви відмічаєте, чи
-                {` ${CHILD_NAME}`} прочитала сама. Зупинитися можна будь-коли.
+                {personalize(
+                  'Звуки вимовляйте саме як звуки ([м], а не «ем»). Помилки - це нормально: підказки допоможуть, а ви відмічаєте, чи {name} {прочитала сама|прочитав сам}. Зупинитися можна будь-коли.',
+                  child,
+                )}
               </p>
             </details>
           )}
@@ -146,7 +150,7 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
           </button>
           {summary.scored > 0 && !solo && (
             <p className="mission-done__adult">
-              Для дорослого: {summary.readTotal > 0 && `сама прочитала ${summary.readAlone} з ${summary.readTotal}; `}
+              Для дорослого: {summary.readTotal > 0 && personalize(`{сама прочитала|сам прочитав} ${summary.readAlone} з ${summary.readTotal}; `, child)}
               підказки знадобилися у {summary.hinted} з {summary.scored} завдань.
             </p>
           )}

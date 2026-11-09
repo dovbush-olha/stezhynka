@@ -11,6 +11,7 @@ import { AdultPrompt, ColoredText, HintButton, ListenButton, ReadingMarks } from
 import { caseText } from '../text';
 import { toLower } from '../../content/alphabet';
 import type { ExerciseProps } from './types';
+import { useChild } from '../../store/progressStore';
 
 interface Tile {
   id: number;
@@ -23,6 +24,7 @@ interface Tile {
  * або однозначна картинка. Фраза складається слово за словом, між словами - широкий проміжок.
  */
 export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeedback, onComplete }: ExerciseProps<BuildWordExercise>) {
+  const child = useChild();
   const word = getWord(exercise.word);
   const parts = syllablesOf(word);
   const groups = wordsOf(word);
@@ -115,8 +117,8 @@ export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeed
         <AdultPrompt>
           Скажіть {phrase ? 'фразу' : 'слово'} по складах: <b>«{word.split}»</b>.{' '}
           {phrase
-            ? 'Майя складає слово за словом; коли перше слово готове, назвіть наступне ще раз.'
-            : 'Потім повторіть перший склад, коли Майя шукатиме.'}
+            ? `${child.name} складає слово за словом; коли перше слово готове, назвіть наступне ще раз.`
+            : `Потім повторіть перший склад, коли ${child.name} шукатиме.`}
         </AdultPrompt>
       )}
 
@@ -182,7 +184,7 @@ export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeed
 
       {built && !completed && (
         <>
-          {!solo && <AdultPrompt>Нехай Майя прочитає {phrase ? 'складену фразу' : 'складене слово'}. Картинка з’явиться після читання.</AdultPrompt>}
+          {!solo && <AdultPrompt>Нехай {child.name} прочитає {phrase ? 'складену фразу' : 'складене слово'}. Картинка з’явиться після читання.</AdultPrompt>}
           {solo ? <SoloRead text={word.text} onDone={soloDone} /> : <ReadingMarks onMark={mark} />}
         </>
       )}

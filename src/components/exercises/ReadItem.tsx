@@ -8,6 +8,7 @@ import { AdultPrompt, ColoredText, HintButton, ReadingMarks, SayButton } from '.
 import { caseText, glide } from '../text';
 import { Syllable, SyllableSplit } from './SyllableSplit';
 import type { ExerciseProps } from './types';
+import { useChild } from '../../store/progressStore';
 
 type Props = ExerciseProps<ReadSyllableExercise | ReadWordExercise>;
 
@@ -19,6 +20,7 @@ type Props = ExerciseProps<ReadSyllableExercise | ReadWordExercise>;
  * Послухати, як правильно, - це підказка: так і рахуємо.
  */
 export function ReadItem({ exercise, readingCase, solo, openHints, completed, onFeedback, onComplete }: Props) {
+  const child = useChild();
   const isWord = exercise.kind === 'read-word';
   const text = isWord ? exercise.word : exercise.syllable;
   const word = isWord ? getWord(exercise.word) : undefined;
@@ -74,11 +76,11 @@ export function ReadItem({ exercise, readingCase, solo, openHints, completed, on
             <AdultPrompt>
               {word ? (
                 <>
-                  Нехай Майя прочитає по складах{split ? <>: <b>{word.split}</b></> : ''}. Не підказуйте одразу - картинка з’явиться після читання.
+                  Нехай {child.name} прочитає по складах{split ? <>: <b>{word.split}</b></> : ''}. Не підказуйте одразу - картинка з’явиться після читання.
                 </>
               ) : (
                 <>
-                  Нехай Майя тягне перший звук і без паузи переходить у наступний: <b>«{glide(text)}»</b>. Не по одній букві. Не
+                  Нехай {child.name} тягне перший звук і без паузи переходить у наступний: <b>«{glide(text)}»</b>. Не по одній букві. Не
                   називайте склад першими.
                 </>
               )}

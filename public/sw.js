@@ -2,7 +2,7 @@
 // Сторінку (index.html) беремо з мережі, коли вона є, - так оновлення видно з першого відкриття;
 // без мережі - зі збереженої копії. Решта файлів (скрипти й стилі з хешем у назві, картинки)
 // береться з кешу й тихо оновлюється в мережі (stale-while-revalidate).
-const CACHE = 'maya-adventures-v2';
+const CACHE = 'stezhynka-v3';
 const PAGE_TIMEOUT_MS = 4000;
 
 self.addEventListener('install', (event) => {

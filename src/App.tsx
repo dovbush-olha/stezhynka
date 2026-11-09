@@ -9,6 +9,7 @@ import { todayISO } from './logic/progress';
 import { Home } from './screens/Home';
 import { MissionPlayer } from './screens/MissionPlayer';
 import { Parent } from './screens/Parent';
+import { Welcome } from './screens/Welcome';
 import { getProgress, useProgress } from './store/progressStore';
 
 type Screen =
@@ -67,9 +68,10 @@ export default function App() {
     <>
       <ForestBackground night={settings.theme === 'night'} />
       <div className="app">
-        {screen.name === 'home' && <Home onStart={(m) => start(m, 'home')} onParent={() => setScreen({ name: 'parent' })} />}
-        {screen.name === 'parent' && <Parent onBack={() => setScreen({ name: 'home' })} onStart={(m) => start(m, 'parent')} />}
-        {screen.name === 'mission' && (
+        {!settings.child && <Welcome />}
+        {settings.child && screen.name === 'home' && <Home onStart={(m) => start(m, 'home')} onParent={() => setScreen({ name: 'parent' })} />}
+        {settings.child && screen.name === 'parent' && <Parent onBack={() => setScreen({ name: 'home' })} onStart={(m) => start(m, 'parent')} />}
+        {settings.child && screen.name === 'mission' && (
           <MissionPlayer
             key={screen.run}
             mission={screen.mission}

@@ -74,7 +74,7 @@ export function adviseNextLetter(state: ProgressState, missions = COURSE_MISSION
     return {
       letter,
       ready: false,
-      message: `Буква ${letter} відкриється сама, коли Майя пройде доступні місії (залишилось ${pending.length}). Якщо в школі її вже вчили, можна відкрити й зараз.`,
+      message: `Буква ${letter} відкриється сама, коли {name} пройде доступні місії (залишилось ${pending.length}). Якщо в школі її вже вчили, можна відкрити й зараз.`,
     };
   }
 
@@ -82,13 +82,13 @@ export function adviseNextLetter(state: ProgressState, missions = COURSE_MISSION
   const recent = lp?.recent ?? [];
   const ratio = recent.length ? recent.filter(Boolean).length / recent.length : 0;
   if (recent.length >= 4 && ratio >= 0.67 && lp?.status !== 'learning') {
-    return { letter, ready: true, message: `Майя добре впізнає ${newest}. Можна відкривати ${letter}.` };
+    return { letter, ready: true, message: `{name} добре впізнає ${newest}. Можна відкривати ${letter}.` };
   }
   if (recent.length >= 4 && ratio >= 0.67) {
     return {
       letter,
       ready: true,
-      message: `Майя здебільшого впізнає ${newest} з першого разу. Якщо погоджуєтесь, позначте ${newest} як «Знає» або «Іноді забуває» і відкривайте ${letter}.`,
+      message: `{name} здебільшого впізнає ${newest} з першого разу. Якщо погоджуєтесь, позначте ${newest} як «Знає» або «Іноді забуває» і відкривайте ${letter}.`,
     };
   }
   return {

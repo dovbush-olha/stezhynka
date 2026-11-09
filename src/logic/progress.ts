@@ -1,4 +1,5 @@
 import { BASE_LETTERS, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, lettersOf, type LetterId } from '../content/alphabet';
+import { LEGACY_CHILD, isChild, type Child } from '../content/child';
 import { isHelperId, type HelperId } from '../content/helpers';
 import type { Mission } from '../content/types';
 import { COURSE_MISSIONS, LEGACY_MISSION_IDS } from '../content/course';
@@ -50,6 +51,8 @@ export interface Settings {
   recordReading: boolean;
   /** Склади з дужками й кнопка 🔊 видно одразу; вимкнено - лише після «Підказка». */
   openHints: boolean;
+  /** Хто грається. null - ще не знайомилися: застосунок спершу спитає ім'я. */
+  child: Child | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -60,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'solo',
   recordReading: true,
   openHints: true,
+  child: null,
 };
 
 function normalizeSettings(raw: unknown): Settings {
@@ -73,6 +77,8 @@ function normalizeSettings(raw: unknown): Settings {
     mode: r.mode === 'together' || r.mode === 'solo' ? r.mode : d.mode,
     recordReading: typeof r.recordReading === 'boolean' ? r.recordReading : d.recordReading,
     openHints: typeof r.openHints === 'boolean' ? r.openHints : d.openHints,
+    // Збережений прогрес без поля child - з часів, коли застосунок був лише для Майї.
+    child: isChild(r.child) ? r.child : 'child' in r ? null : LEGACY_CHILD,
   };
 }
 

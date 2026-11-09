@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { usePendingReadings } from '../audio/readings';
 import { HELPERS, helperName } from '../content/helpers';
-import { CHILD_NAME, GREETINGS, pick } from '../content/phrases';
+import { personalize } from '../content/child';
+import { GREETINGS, pick } from '../content/phrases';
 import type { Mission } from '../content/types';
 import { COURSE } from '../content/course';
 import { Helper } from '../components/Helper';
@@ -9,7 +10,7 @@ import { ParentGate } from '../components/ParentGate';
 import { ColoredText, Modal } from '../components/ui';
 import { missingLetters, missionAvailability, recommend } from '../logic/availability';
 import { updateSettings } from '../logic/progress';
-import { updateProgress, useProgress } from '../store/progressStore';
+import { updateProgress, useChild, useProgress } from '../store/progressStore';
 import { StarJar } from './MissionPlayer';
 
 interface Props {
@@ -24,6 +25,7 @@ export function Home({ onStart, onParent }: Props) {
   const pendingReadings = usePendingReadings().length;
   const { settings } = progress;
   const rec = recommend(progress);
+  const child = useChild();
   const [greeting] = useState(() => pick(GREETINGS));
   const [message, setMessage] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
@@ -41,8 +43,8 @@ export function Home({ onStart, onParent }: Props) {
     <div className="screen home">
       <header className="home__header">
         <h1 className="logo">
-          <span className="logo__small">Пригоди</span>
-          <span className="logo__big">Майї</span>
+          <span className="logo__big">Стежинка</span>
+          <span className="logo__small">до читання</span>
         </h1>
         <div className="home__controls">
           <button
@@ -73,7 +75,7 @@ export function Home({ onStart, onParent }: Props) {
             <span className="hero__change">🔄 Обрати друга</span>
           </button>
           <p className="bubble bubble--hero" aria-live="polite">
-            {message ?? greeting}
+            {message ?? personalize(greeting, child)}
           </p>
         </div>
 
@@ -112,7 +114,7 @@ export function Home({ onStart, onParent }: Props) {
               {rec.reason === 'needs-letters' && (
                 <p className="hero__adult">
                   Для дорослого: наступна місія «{rec.waitingMission.title}» чекає букву {rec.letters.join(', ')}. Відкрийте її в режимі
-                  «Для дорослих», коли {CHILD_NAME} буде готова.
+                  «Для дорослих», коли {child.name} {personalize('{буде готова|буде готовий}', child)}.
                 </p>
               )}
             </>

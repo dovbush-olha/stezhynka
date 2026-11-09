@@ -1271,3 +1271,100 @@
 :root[data-theme='night'] .app-version {
   color: rgba(243, 236, 255, 0.6);
 }
+
+/* ================= Знайомство й дані дитини ================= */
+
+.welcome {
+  align-items: center;
+}
+
+.welcome__logo {
+  align-self: center;
+  text-align: center;
+}
+
+.welcome__page {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome__helper {
+  align-self: center;
+  margin-top: -8px;
+}
+
+.welcome__title {
+  font-size: clamp(1.6rem, 3.4vw, 2rem);
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.welcome__text,
+.welcome__privacy {
+  color: var(--ink-soft);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.welcome__privacy {
+  font-size: 0.9rem;
+}
+
+.child-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.child-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.child-form__field small {
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.child-form .segmented__item {
+  flex: 1;
+}
+
+.child-form__submit {
+  margin-top: 10px;
+}
+
+.child-form__submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.text-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 16px;
+  border: 2px solid var(--paper-edge);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--fox);
+  box-shadow: 0 0 0 4px var(--fox-pale);
+}
+
+.child-form__submit--compact {
+  align-self: flex-start;
+}

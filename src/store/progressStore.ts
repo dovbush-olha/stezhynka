@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { LEGACY_CHILD, type Child } from '../content/child';
 import { createInitialState, normalizeState, todayISO, type ProgressState } from '../logic/progress';
 
 const STORAGE_KEY = 'maya-adventures/progress';
@@ -35,8 +36,12 @@ export function updateProgress(fn: (s: ProgressState) => ProgressState) {
   listeners.forEach((l) => l());
 }
 
+/** Стирає прогрес, але пам'ятає, хто грається: знайомитися вдруге не треба. */
 export function resetProgress() {
-  updateProgress(() => createInitialState());
+  updateProgress((s) => {
+    const fresh = createInitialState();
+    return { ...fresh, settings: { ...fresh.settings, child: s.settings.child } };
+  });
 }
 
 function subscribe(listener: () => void) {
@@ -56,4 +61,9 @@ function subscribe(listener: () => void) {
 
 export function useProgress(): ProgressState {
   return useSyncExternalStore(subscribe, getProgress);
+}
+
+/** Хто грається. Екрани гри відкриваються лише після знайомства, тож профіль уже є. */
+export function useChild(): Child {
+  return useProgress().settings.child ?? LEGACY_CHILD;
 }

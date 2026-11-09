@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { personalize } from '../content/child';
+import { useChild } from '../store/progressStore';
 import { LETTERS, isLetterId, toUpper } from '../content/alphabet';
 import { playRecording, useRecordingKeys } from '../audio/recordings';
 import { sayKey } from '../logic/voice';
@@ -45,12 +47,13 @@ export function HintButton({ onClick, disabled }: { onClick: () => void; disable
 
 /** Дорослий відмічає, як дитина прочитала. Обидва варіанти - позитивні. */
 export function ReadingMarks({ onMark, say = false }: { onMark: (alone: boolean) => void; /** Звук букви, а не читання. */ say?: boolean }) {
+  const child = useChild();
   return (
     <div className="reading-marks">
       <span className="reading-marks__label">Дорослому: як вийшло?</span>
       <div className="reading-marks__buttons">
         <button type="button" className="mark mark--alone" onClick={() => onMark(true)}>
-          <span aria-hidden="true">⭐</span> {say ? 'Сказала сама' : 'Прочитала сама'}
+          <span aria-hidden="true">⭐</span> {personalize(say ? '{Сказала сама|Сказав сам}' : '{Прочитала сама|Прочитав сам}', child)}
         </button>
         <button type="button" className="mark mark--together" onClick={() => onMark(false)}>
           <span aria-hidden="true">🤝</span> {say ? 'Підказали' : 'Прочитали разом'}
@@ -62,12 +65,13 @@ export function ReadingMarks({ onMark, say = false }: { onMark: (alone: boolean)
 
 /** Дитина грається сама: позначає, що прочитала вголос. */
 export function SoloReadButton({ onDone, say = false }: { onDone: () => void; say?: boolean }) {
+  const child = useChild();
   return (
     <button type="button" className="solo-read" onClick={onDone}>
       <span className="solo-read__star" aria-hidden="true">
         ⭐
       </span>
-      {say ? 'Сказала!' : 'Прочитала!'}
+      {personalize(say ? '{Сказала|Сказав}!' : '{Прочитала|Прочитав}!', child)}
     </button>
   );
 }
