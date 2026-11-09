@@ -4,7 +4,7 @@ import { HINTS, PRAISE, PRAISE_AFTER_HINT, TRY_AGAIN, pick } from '../../content
 import type { FindLetterExercise, LetterBySoundExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
-import { AdultPrompt, HintButton, ListenButton } from '../ui';
+import { SayAloud, HintButton, ListenButton } from '../ui';
 import type { ExerciseProps } from './types';
 
 type Props = ExerciseProps<FindLetterExercise | LetterBySoundExercise>;
@@ -72,13 +72,7 @@ export function ChooseLetter({ exercise, solo, completed, onFeedback, onComplete
               <span className="listen-badge__waves" />
             </div>
           )}
-          {!solo && (
-            <AdultPrompt>
-              {recorded ? 'Звучить ваш запис. Можна повторити й самим: ' : 'Скажіть звук '}
-              <b>{info.sound}</b> - {info.say}.
-              {level > 0 && ' Повторіть повільно і покажіть ротиком, як він звучить.'}
-            </AdultPrompt>
-          )}
+          {!solo && !recorded && <SayAloud>{info.sound}</SayAloud>}
         </>
       )}
 

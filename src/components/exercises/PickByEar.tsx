@@ -5,7 +5,7 @@ import type { PickByEarExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { playRecording, useRecordingKeys } from '../../audio/recordings';
 import { sayKey } from '../../logic/voice';
-import { AdultPrompt, ColoredText, HintButton, ListenButton } from '../ui';
+import { SayAloud, ColoredText, HintButton, ListenButton } from '../ui';
 import { caseText } from '../text';
 import type { ExerciseProps } from './types';
 
@@ -69,12 +69,7 @@ export function PickByEar({ exercise, readingCase, solo, completed, onFeedback, 
         )}
         <HintButton onClick={() => raise(false)} disabled={completed || level >= 2} />
       </div>
-      {!solo && (
-        <AdultPrompt>
-          {recorded ? 'Звучить ваш запис. Можна повторити й самим: ' : 'Прочитайте вголос, чітко і злито: '}
-          <b>{text}</b>.{level > 0 && ' Повторіть повільніше, протягуючи звуки.'}
-        </AdultPrompt>
-      )}
+      {!solo && !recorded && <SayAloud>«{text}»</SayAloud>}
 
       <div className={`ear-row ${long ? 'ear-row--long' : ''}`}>
         {options.map((o) => {

@@ -230,49 +230,18 @@
   font-size: clamp(2.2rem, 5vw, 3.1rem);
 }
 
-/* ---------- Картка для дорослого ---------- */
+/* ---------- Що сказати вголос ---------- */
 
-.adult-prompt {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 620px;
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  background: var(--lilac-pale);
-  border: 2px solid #e0d3f1;
-  text-align: left;
-  color: #4e3f66;
+.say-aloud {
+  margin: 0;
+  color: var(--ink-soft);
   font-size: 1rem;
-  line-height: 1.45;
+  text-align: center;
 }
 
-.adult-prompt__icon {
-  font-size: 1.5rem;
-  line-height: 1;
-  margin-top: 2px;
-}
-
-.adult-prompt__label {
-  display: block;
-  font-size: 0.78rem;
+.say-aloud b {
   font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8a76a8;
-  margin-bottom: 2px;
-}
-
-.adult-prompt__text b {
-  font-weight: 900;
-  color: #3c2c57;
-}
-
-.adult-prompt__extra {
-  display: block;
-  margin-top: 6px;
-  color: #6b5a86;
+  color: var(--ink);
 }
 
 /* ---------- Підказка ---------- */

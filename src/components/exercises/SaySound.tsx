@@ -5,7 +5,7 @@ import type { SaySoundExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
 import { SoloRead } from '../SoloRead';
-import { AdultPrompt, HintButton, ListenButton, ReadingMarks } from '../ui';
+import { HintButton, ListenButton, ReadingMarks } from '../ui';
 import type { ExerciseProps } from './types';
 
 /**
@@ -19,7 +19,6 @@ import type { ExerciseProps } from './types';
 export function SaySound({ exercise, solo, completed, onFeedback, onComplete }: ExerciseProps<SaySoundExercise>) {
   const info = LETTERS[exercise.letter];
   // «кит» для И: звук не на початку слова.
-  const startsWithSound = toLower(info.mnemonic.word).startsWith(toLower(info.id));
   const glyph = exercise.letterCase === 'lower' ? toLower(info.id) : info.id;
   const recorded = hasRecording(soundKey(info.id));
   const play = () => void playRecording(soundKey(info.id));
@@ -70,16 +69,6 @@ export function SaySound({ exercise, solo, completed, onFeedback, onComplete }: 
 
       {!completed && (
         <>
-          {!solo && (
-            <AdultPrompt>
-              Запитайте: «Як звучить ця буква?» Зачекайте кілька секунд і не підказуйте. Правильно - звук <b>{info.sound}</b>,{' '}
-              {info.say}, а не назва букви.
-              <span className="adult-prompt__extra">
-                Якщо не згадує, натисніть 💡: з’явиться {info.mnemonic.picture} «{info.mnemonic.word}».{' '}
-                {startsWithSound ? 'Спитайте, з якого звука починається це слово.' : `Протягніть у ньому цей звук.`}
-              </span>
-            </AdultPrompt>
-          )}
           <div className="exercise__tools">
             {level >= 2 && <ListenButton onPlay={play} />}
             <HintButton onClick={hint} disabled={level >= maxLevel} />

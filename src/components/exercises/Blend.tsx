@@ -6,11 +6,10 @@ import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
 import { sayKey } from '../../logic/voice';
 import { SoloRead } from '../SoloRead';
-import { AdultPrompt, ReadingMarks, SayButton } from '../ui';
+import { ReadingMarks, SayButton } from '../ui';
 import { caseText, glide } from '../text';
 import { Syllable } from './SyllableSplit';
 import type { ExerciseProps } from './types';
-import { useChild } from '../../store/progressStore';
 
 type Phase = 'idle' | 'drag' | 'auto' | 'done';
 
@@ -28,7 +27,6 @@ const AUTO_MS = 1600;
  * Просто торкнутися першої букви теж можна - тоді кулька поїде сама.
  */
 export function Blend({ exercise, readingCase, solo, completed, onFeedback, onComplete }: ExerciseProps<BlendExercise>) {
-  const child = useChild();
   const [a, b] = exercise.sounds;
   const syllable = toLower(a + b);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -175,22 +173,6 @@ export function Blend({ exercise, readingCase, solo, completed, onFeedback, onCo
             <span className="letter-glyph">{show(b)}</span>
           </span>
         </div>
-      )}
-
-      {!solo && !completed && (
-        <AdultPrompt>
-          {done ? (
-            <>
-              Тепер прочитайте склад разом, як кулька щойно проїхала: <b className="nowrap">«{glide(syllable)}»</b> -{' '}
-              <b>«{syllable}»</b>.
-            </>
-          ) : (
-            <>
-              Коли {child.name} поведе кульку пальчиком, тягніть разом з нею <b>{LETTERS[a].sound}</b> без зупинки, поки кулька не доїде до{' '}
-              <b>{LETTERS[b].sound}</b>: <b className="nowrap">«{glide(syllable)}»</b>. Не робіть паузи між звуками.
-            </>
-          )}
-        </AdultPrompt>
       )}
 
       {done && !completed && (solo ? <SoloRead text={syllable} onDone={soloDone} /> : <ReadingMarks onMark={mark} />)}

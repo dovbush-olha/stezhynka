@@ -22,18 +22,12 @@ export function ColoredText({ text, className = '' }: { text: string; className?
   );
 }
 
-/** Картка-підказка для дорослого: що сказати вголос. */
-export function AdultPrompt({ children }: { children: ReactNode }) {
+/** Що дорослому сказати вголос, коли звук чи слово не звучить його записом. */
+export function SayAloud({ children }: { children: ReactNode }) {
   return (
-    <div className="adult-prompt" role="note">
-      <span className="adult-prompt__icon" aria-hidden="true">
-        🧑‍🏫
-      </span>
-      <div className="adult-prompt__body">
-        <span className="adult-prompt__label">Дорослому</span>
-        <div className="adult-prompt__text">{children}</div>
-      </div>
-    </div>
+    <p className="say-aloud">
+      Скажіть: <b>{children}</b>
+    </p>
   );
 }
 

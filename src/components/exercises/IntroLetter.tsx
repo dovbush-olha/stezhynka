@@ -3,7 +3,7 @@ import { LETTERS, toLower } from '../../content/alphabet';
 import type { IntroLetterExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
-import { AdultPrompt } from '../ui';
+import { SayAloud } from '../ui';
 import type { ExerciseProps } from './types';
 
 export function IntroLetter({ exercise, solo, completed, onFeedback, onComplete }: ExerciseProps<IntroLetterExercise>) {
@@ -49,15 +49,7 @@ export function IntroLetter({ exercise, solo, completed, onFeedback, onComplete 
         )}
       </button>
 
-      {!solo && (
-        <AdultPrompt>
-          {recorded ? 'Звучить ваш запис звука ' : 'Скажіть звук '}
-          <b>{info.sound}</b> - {info.say}. Попросіть повторити й торкнутися букви.
-          <span className="adult-prompt__extra">
-            {info.mnemonic.picture} Звук {info.sound} - на початку слова «{info.mnemonic.word}».
-          </span>
-        </AdultPrompt>
-      )}
+      {!solo && !recorded && <SayAloud>{info.sound}</SayAloud>}
     </div>
   );
 }
