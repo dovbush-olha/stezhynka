@@ -795,6 +795,16 @@
     gap: 10px;
   }
 
+  /* Кнопки в розділі для дорослих: звичайний розмір і переносимо текст, щоб не вилазили за картку. */
+  .big-button--small {
+    max-width: 100%;
+    font-size: 1.05rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+    padding: 10px 20px;
+  }
+
   .match-grid {
     gap: 10px;
   }
