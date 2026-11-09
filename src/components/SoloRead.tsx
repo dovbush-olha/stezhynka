@@ -6,8 +6,15 @@ import { SoloReadButton } from './ui';
 
 /** Найдовше читання - коротка фраза по складах. */
 const MAX_MS = 8000;
-/** «Готово» стає доступною не одразу: два швидкі дотики - це ще не читання. */
+/**
+ * Два швидкі дотики - це ще не читання: дотик до «Готово» раніше, ніж за стільки після «Читаю!»,
+ * ігноруємо, а пізніший дотик зупиняє запис не раніше, ніж він триватиме стільки.
+ */
 const MIN_MS = 800;
+
+/** Скільки ще чекати, поки від `since` мине MIN_MS (від'ємне - уже минуло). */
+const untilMin = (since: number) => since + MIN_MS - performance.now();
+const now = () => performance.now();
 
 type Phase = 'idle' | 'starting' | 'recording';
 
@@ -20,8 +27,13 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
   const { recordReading } = useProgress().settings;
   const [phase, setPhase] = useState<Phase>('idle');
   const [failed, setFailed] = useState(false);
-  const [canStop, setCanStop] = useState(false);
   const stopRef = useRef<(() => void) | undefined>(undefined);
+  /** Коли дитина натиснула «Читаю!» і коли мікрофон справді почав писати. */
+  const tappedAt = useRef(0);
+  const recordingSince = useRef(0);
+  /** Дитина вже натиснула «Готово», а мікрофон ще вмикався чи запис ще закороткий. */
+  const stopWanted = useRef(false);
+  const stopTimer = useRef<number | undefined>(undefined);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -29,13 +41,32 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     return () => {
       // Пішли з вправи посеред запису: звільняємо мікрофон і нічого не зберігаємо.
       alive.current = false;
+      window.clearTimeout(stopTimer.current);
       stopRef.current?.();
     };
   }, []);
 
   if (!recordReading || !canRecord() || failed) return <SoloReadButton onDone={onDone} say={say} />;
 
+  /** Зупиняє запис, щойно він триває щонайменше MIN_MS. */
+  const stopWhenReady = () => {
+    window.clearTimeout(stopTimer.current);
+    if (!stopWanted.current || !stopRef.current) return;
+    const wait = untilMin(recordingSince.current);
+    if (wait > 0) stopTimer.current = window.setTimeout(stopWhenReady, wait);
+    else stopRef.current();
+  };
+
+  const requestStop = () => {
+    if (untilMin(tappedAt.current) > 0) return;
+    stopWanted.current = true;
+    stopWhenReady();
+  };
+
   const start = async () => {
+    // Відповідаємо на дотик одразу: на телефоні мікрофон вмикається до секунди-двох.
+    tappedAt.current = now();
+    stopWanted.current = false;
     setPhase('starting');
     let rec: Awaited<ReturnType<typeof startRecording>>;
     try {
@@ -50,9 +81,9 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
       return;
     }
     stopRef.current = rec.stop;
+    recordingSince.current = now();
     setPhase('recording');
-    setCanStop(false);
-    window.setTimeout(() => alive.current && setCanStop(true), MIN_MS);
+    stopWhenReady();
     const blob = await rec.done;
     stopRef.current = undefined;
     if (!alive.current) return;
@@ -65,17 +96,22 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     if (alive.current) onDone();
   };
 
-  if (phase === 'recording') {
+  if (phase !== 'idle') {
+    const recording = phase === 'recording';
     return (
-      <button type="button" className="solo-read solo-read--recording" onClick={() => stopRef.current?.()} disabled={!canStop}>
+      <button
+        type="button"
+        className={`solo-read solo-read--recording${recording ? '' : ' solo-read--starting'}`}
+        onClick={requestStop}
+      >
         <span className="solo-read__dot" aria-hidden="true" />
-        Готово
+        {recording ? 'Готово' : 'Слухаю…'}
       </button>
     );
   }
 
   return (
-    <button type="button" className="solo-read solo-read--mic" onClick={() => void start()} disabled={phase === 'starting'}>
+    <button type="button" className="solo-read solo-read--mic" onClick={() => void start()}>
       <span className="solo-read__star" aria-hidden="true">
         🎙️
       </span>

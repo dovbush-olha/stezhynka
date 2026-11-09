@@ -238,14 +238,6 @@
   animation: star-wobble 2.4s ease-in-out infinite;
 }
 
-.solo-read:disabled {
-  cursor: default;
-}
-
-.solo-read--mic:disabled {
-  opacity: 0.7;
-}
-
 /* Іде запис: тепла «ягідна» кнопка з пульсуючою крапкою, як на диктофоні. */
 .solo-read--recording {
   background: linear-gradient(180deg, #f28aa6, var(--berry));
@@ -258,8 +250,14 @@
   box-shadow: 0 1px 0 #c24f70;
 }
 
-.solo-read--recording:disabled {
-  opacity: 1;
+/* Мікрофон ще вмикається: кнопка вже відповіла на дотик, але крапка ще не пульсує. */
+.solo-read--starting {
+  animation: none;
+}
+
+.solo-read--starting .solo-read__dot {
+  animation: none;
+  opacity: 0.6;
 }
 
 .solo-read__dot {
