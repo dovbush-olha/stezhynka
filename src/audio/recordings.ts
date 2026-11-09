@@ -1,55 +1,68 @@
 import { useSyncExternalStore } from 'react';
+import { BUILTIN_VOICE } from '../content/builtinVoice';
 import { tx } from './db';
 
 export { soundKey } from '../logic/voice';
 
 /**
- * Записи голосу дорослого (звуки букв) у IndexedDB на самому пристрої.
- * Коли дитина грається сама, вправа «вибери букву за звуком» відтворює мамин запис.
+ * Голос, який чує дитина: звуки букв, склади й слова.
+ * Свої записи дорослого лежать в IndexedDB на самому пристрої і мають перевагу;
+ * для решти звучить вбудований голос «Стежинки» (public/voice, див. scripts/import-voice.mjs).
  */
 
-let keys = new Set<string>();
+const BUILTIN_KEYS: ReadonlySet<string> = new Set(Object.keys(BUILTIN_VOICE));
+
+/** Записи дорослого на цьому пристрої. */
+let own = new Set<string>();
+/** Усе, що можна відтворити: свої записи й вбудований голос. */
+let playable: ReadonlySet<string> = BUILTIN_KEYS;
 let listeners: Array<() => void> = [];
-const emit = () => listeners.forEach((l) => l());
+
+function setOwn(next: Set<string>) {
+  own = next;
+  playable = new Set([...BUILTIN_KEYS, ...own]);
+  listeners.forEach((l) => l());
+}
 
 export async function loadRecordingKeys() {
   try {
     const all = await tx('recordings', 'readonly', (s) => s.getAllKeys());
-    keys = new Set(all.map(String));
-    emit();
+    setOwn(new Set(all.map(String)));
   } catch {
-    // IndexedDB недоступна (приватний режим) - просто без записів.
+    // IndexedDB недоступна (приватний режим) - звучить лише вбудований голос.
   }
 }
 
+/** Чи є що відтворити для цього ключа: свій запис або вбудований голос. */
 export function hasRecording(key: string): boolean {
-  return keys.has(key);
+  return playable.has(key);
+}
+
+/** Чи є для ключа вбудований голос «Стежинки». */
+export function hasBuiltinVoice(key: string): boolean {
+  return BUILTIN_KEYS.has(key);
 }
 
 export async function saveRecording(key: string, blob: Blob) {
   await tx('recordings', 'readwrite', (s) => s.put(blob, key));
-  keys = new Set(keys).add(key);
-  emit();
+  setOwn(new Set(own).add(key));
 }
 
 export async function deleteRecording(key: string) {
   await tx('recordings', 'readwrite', (s) => s.delete(key));
-  const next = new Set(keys);
+  const next = new Set(own);
   next.delete(key);
-  keys = next;
-  emit();
+  setOwn(next);
 }
 
 let current: HTMLAudioElement | undefined;
 
-/** Відтворює запис; попередній, якщо ще звучить, зупиняється. */
-export async function playBlob(blob: Blob): Promise<boolean> {
+async function playUrl(url: string, onEnded?: () => void): Promise<boolean> {
   try {
     current?.pause();
-    const url = URL.createObjectURL(blob);
     const el = new Audio(url);
     current = el;
-    el.onended = () => URL.revokeObjectURL(url);
+    if (onEnded) el.onended = onEnded;
     await el.play();
     return true;
   } catch {
@@ -57,10 +70,36 @@ export async function playBlob(blob: Blob): Promise<boolean> {
   }
 }
 
+/** Відтворює запис; попередній, якщо ще звучить, зупиняється. */
+export async function playBlob(blob: Blob): Promise<boolean> {
+  const url = URL.createObjectURL(blob);
+  return playUrl(url, () => URL.revokeObjectURL(url));
+}
+
+/** Відтворює свій запис дорослого, а якщо його немає - вбудований голос. */
 export async function playRecording(key: string): Promise<boolean> {
+  if (own.has(key)) {
+    try {
+      const blob = await tx<Blob | undefined>('recordings', 'readonly', (s) => s.get(key));
+      if (blob) return await playBlob(blob);
+    } catch {
+      // Не вдалося прочитати свій запис - спробуємо вбудований голос.
+    }
+  }
+  return playBuiltinVoice(key);
+}
+
+/**
+ * Відтворює вбудований голос «Стежинки», навіть якщо є свій запис (щоб дорослий міг порівняти).
+ * Файл беремо через fetch і граємо як blob: Safari не відтворює аудіо, яке service worker
+ * віддає з кешу без підтримки Range-запитів.
+ */
+export async function playBuiltinVoice(key: string): Promise<boolean> {
+  const file = BUILTIN_VOICE[key];
+  if (!file) return false;
   try {
-    const blob = await tx<Blob | undefined>('recordings', 'readonly', (s) => s.get(key));
-    return blob ? await playBlob(blob) : false;
+    const response = await fetch(`${import.meta.env.BASE_URL}voice/${file}`);
+    return response.ok ? await playBlob(await response.blob()) : false;
   } catch {
     return false;
   }
@@ -73,10 +112,17 @@ function subscribe(l: () => void) {
   };
 }
 
-const getKeys = () => keys;
+const getPlayable = () => playable;
+const getOwn = () => own;
 
-export function useRecordingKeys(): Set<string> {
-  return useSyncExternalStore(subscribe, getKeys, getKeys);
+/** Що можна відтворити: свої записи й вбудований голос. */
+export function useRecordingKeys(): ReadonlySet<string> {
+  return useSyncExternalStore(subscribe, getPlayable, getPlayable);
+}
+
+/** Лише записи дорослого на цьому пристрої (для розділу «Ваш голос»). */
+export function useOwnRecordingKeys(): ReadonlySet<string> {
+  return useSyncExternalStore(subscribe, getOwn, getOwn);
 }
 
 /** Чи можна записувати звук на цьому пристрої (потрібне https або localhost). */

@@ -6,7 +6,18 @@ import { ChildForm } from '../components/ChildForm';
 import type { Mission } from '../content/types';
 import { COURSE, COURSE_MISSIONS } from '../content/course';
 import { clearReadings, playReading, removeReading, usePendingReadings } from '../audio/readings';
-import { canRecord, deleteRecording, playRecording, requestMicrophone, saveRecording, soundKey, startRecording, useRecordingKeys } from '../audio/recordings';
+import {
+  canRecord,
+  deleteRecording,
+  hasBuiltinVoice,
+  playBuiltinVoice,
+  playRecording,
+  requestMicrophone,
+  saveRecording,
+  soundKey,
+  startRecording,
+  useOwnRecordingKeys,
+} from '../audio/recordings';
 import { HELPERS } from '../content/helpers';
 import { Helper } from '../components/Helper';
 import { ColoredText, Modal } from '../components/ui';
@@ -705,7 +716,7 @@ interface RecItem {
 
 /** Плитки «записати / послухати / видалити» для голосу дорослого. */
 function RecordGrid({ items, maxMs, wide = false }: { items: RecItem[]; maxMs: number; wide?: boolean }) {
-  const keys = useRecordingKeys();
+  const keys = useOwnRecordingKeys();
   const [recording, setRecording] = useState<{ key: string; stop: () => void } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -745,6 +756,17 @@ function RecordGrid({ items, maxMs, wide = false }: { items: RecItem[]; maxMs: n
                     🎙️
                   </button>
                 )}
+                {!has && !isRec && hasBuiltinVoice(key) && (
+                  <button
+                    type="button"
+                    className="chip chip--builtin"
+                    onClick={() => void playBuiltinVoice(key)}
+                    aria-label={`Послухати готовий голос: ${label}`}
+                    title="Готовий голос «Стежинки»"
+                  >
+                    ▶
+                  </button>
+                )}
                 {has && !isRec && (
                   <>
                     <button type="button" className="chip" onClick={() => void playRecording(key)} aria-label={`Послухати ${label}`}>
@@ -776,7 +798,7 @@ function Recordings() {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
   const progress = useProgress();
-  const keys = useRecordingKeys();
+  const keys = useOwnRecordingKeys();
   const letters = voiceLetters(progress.unlocked);
   const done = letters.filter((l) => keys.has(soundKey(l))).length;
   const items = letters.map<RecItem>((l) => ({
@@ -790,8 +812,9 @@ function Recordings() {
     <section className="panel">
       <h2 className="panel__title">Ваш голос для звуків</h2>
       <p className="panel__hint">
-        {t('Коли {name} грається {сама, вона|сам, він} чує звук букви вашим голосом.')} Натисніть 🎙️, скажіть сам звук (не назву букви):
-        протяжне «м-м-м», коротке «к!». Запис зупиниться сам за 2 секунди. Записано: {done} з {letters.length}.
+        {t('Коли {name} грається {сама, вона|сам, він} чує звук букви.')} Де є кнопка ▶ з пунктиром, там уже є готовий голос.
+        Хочете, щоб звучав ваш голос, - натисніть 🎙️ і скажіть сам звук (не назву букви): протяжне «м-м-м», коротке «к!».
+        Запис зупиниться сам за 2 секунди. Ваших записів: {done} з {letters.length}.
       </p>
       {!canRecord() && <p className="warning">{HTTPS_WARNING}</p>}
       <RecordGrid items={items} maxMs={2500} />
@@ -803,7 +826,7 @@ function Recordings() {
 function SayRecordings() {
   const child = useChild();
   const progress = useProgress();
-  const keys = useRecordingKeys();
+  const keys = useOwnRecordingKeys();
   const { syllables, words } = useMemo(() => voiceItems(voiceLetters(progress.unlocked), COURSE_MISSIONS), [progress.unlocked]);
   const count = (list: string[]) => list.filter((t) => keys.has(sayKey(t))).length;
   const tiles = (list: string[], what: string) =>
@@ -817,19 +840,20 @@ function SayRecordings() {
     <section className="panel">
       <h2 className="panel__title">Ваш голос для складів і слів</h2>
       <p className="panel__hint">
-        Під словом у вправі з’явиться 🔊, а склади можна буде торкнути - {child.name} почує, як правильно, вашим голосом. Читайте
-        чітко й не поспішаючи; склади в слові - злито, без пауз. Запис зупиниться сам за 4 секунди або кнопкою «Стоп».
+        Під словом у вправі є 🔊, а склади можна торкнути - {child.name} почує, як правильно. Де є кнопка ▶ з пунктиром, там уже є готовий
+        голос. Щоб звучав ваш, натисніть 🎙️ і читайте чітко й не поспішаючи; склади в слові - злито, без пауз. Запис зупиниться сам за 4
+        секунди або кнопкою «Стоп».
       </p>
       {!canRecord() && <p className="warning">{HTTPS_WARNING}</p>}
       <details className="rec-group">
         <summary>
-          Склади · записано {count(syllables)} з {syllables.length}
+          Склади · ваших записів {count(syllables)} з {syllables.length}
         </summary>
         <RecordGrid items={tiles(syllables, 'склад')} maxMs={4000} />
       </details>
       <details className="rec-group">
         <summary>
-          Слова й фрази · записано {count(words)} з {words.length}
+          Слова й фрази · ваших записів {count(words)} з {words.length}
         </summary>
         <RecordGrid items={tiles(words, 'слово')} maxMs={4000} wide />
       </details>
