@@ -108,6 +108,18 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
           <button type="button" className="big-button" onClick={() => setPhase('play')}>
             Вперед! <span aria-hidden="true">🐾</span>
           </button>
+          {!solo && (
+            <details className="adult-note">
+              <summary>Порада для дорослого</summary>
+              <p>{personalize(mission.adultNote, child)}</p>
+              <p>
+                {personalize(
+                  'Звуки вимовляйте саме як звуки ([м], а не «ем»). Помилки - це нормально: підказки допоможуть, а ви відмічаєте, чи {name} {прочитала сама|прочитав сам}. Зупинитися можна будь-коли.',
+                  child,
+                )}
+              </p>
+            </details>
+          )}
         </div>
       </div>
     );
