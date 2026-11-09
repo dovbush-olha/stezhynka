@@ -1368,3 +1368,38 @@
 .child-form__submit--compact {
   align-self: flex-start;
 }
+
+/* ================= Перенесення прогресу ================= */
+
+.backup__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.backup__done,
+.backup__error {
+  flex-basis: 100%;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.backup__done {
+  color: var(--leaf-dark);
+}
+
+.backup__error {
+  color: #c2410c;
+}
+
+.welcome__restore {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--paper-edge);
+  color: var(--ink-soft);
+  text-align: center;
+}

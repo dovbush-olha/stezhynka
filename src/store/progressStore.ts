@@ -36,6 +36,11 @@ export function updateProgress(fn: (s: ProgressState) => ProgressState) {
   listeners.forEach((l) => l());
 }
 
+/** Прогрес з файлу збереження замінює той, що на пристрої. */
+export function replaceProgress(next: ProgressState) {
+  updateProgress(() => next);
+}
+
 /** Стирає прогрес, але пам'ятає, хто грається: знайомитися вдруге не треба. */
 export function resetProgress() {
   updateProgress((s) => {

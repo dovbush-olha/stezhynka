@@ -44,3 +44,15 @@ export async function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: 
     t.onabort = () => reject(t.error);
   });
 }
+
+/** Кілька дій в одній транзакції: або все записалося, або нічого. */
+export async function txAll(store: StoreName, fn: (s: IDBObjectStore) => void): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(store, 'readwrite');
+    fn(t.objectStore(store));
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
+  });
+}

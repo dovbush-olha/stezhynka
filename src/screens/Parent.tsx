@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, toLower, toUpper, type LetterId } from '../content/alphabet';
 import { personalize } from '../content/child';
+import { BackupPanel } from '../components/Backup';
 import { ChildForm } from '../components/ChildForm';
 import type { Mission } from '../content/types';
 import { COURSE, COURSE_MISSIONS } from '../content/course';
@@ -579,6 +580,8 @@ function SettingsTab() {
 
       <Recordings />
       <SayRecordings />
+
+      <BackupPanel />
 
       <section className="panel">
         <button type="button" className="text-button text-button--danger" onClick={() => setConfirmReset(true)}>

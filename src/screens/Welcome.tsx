@@ -1,3 +1,4 @@
+import { RestoreButton } from '../components/Backup';
 import { ChildForm } from '../components/ChildForm';
 import { Helper } from '../components/Helper';
 import { updateSettings } from '../logic/progress';
@@ -20,6 +21,10 @@ export function Welcome() {
           є окремий розділ з порадами і налаштуваннями.
         </p>
         <ChildForm initial={null} submitLabel="Почати 🐾" big onSave={(child) => updateProgress((s) => updateSettings(s, { child }))} />
+        <div className="welcome__restore">
+          <span>Уже гралися на іншому телефоні?</span>
+          <RestoreButton label="📂 Завантажити прогрес з файлу" className="text-button" />
+        </div>
         <p className="welcome__privacy">Ім'я та прогрес зберігаються лише на цьому пристрої й нікуди не надсилаються.</p>
       </div>
     </div>
