@@ -63,12 +63,10 @@ describe('профіль дитини в збереженому прогресі
 });
 
 describe('маркери в текстах', () => {
-  it('усі фрази й поради після підстановки без зайвих дужок', async () => {
+  it('усі фрази після підстановки без зайвих дужок', async () => {
     const phrases = await import('./phrases');
-    const { COURSE_MISSIONS } = await import('./course');
     const texts = [
       ...Object.values(phrases).flatMap((v) => (typeof v === 'string' ? [v] : Array.isArray(v) ? v : typeof v === 'object' ? Object.values(v) : [])),
-      ...COURSE_MISSIONS.map((m) => m.adultNote),
     ].filter((t): t is string => typeof t === 'string');
     expect(texts.length).toBeGreaterThan(40);
     for (const child of [LEGACY_CHILD, ANDRII]) {

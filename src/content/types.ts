@@ -121,8 +121,6 @@ export interface Mission {
   requires: LetterId[];
   /** Букви, з якими місія знайомить уперше (не повторюються в розминці). */
   newLetters?: LetterId[];
-  /** Коротка порада для дорослого перед місією. */
-  adultNote: string;
   /** Лісовий друг-наліпка за проходження. */
   sticker: string;
   exercises: Exercise[];

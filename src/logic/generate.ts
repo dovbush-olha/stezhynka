@@ -301,9 +301,6 @@ export function buildPracticeMission(state: ProgressState, today: string, rng: R
     requires: [...letters],
     newLetters: fresh ? [fresh] : [],
     sticker,
-    adultNote: fresh
-      ? 'Ця місія знайомить з новою відкритою буквою і повторює те, що {name} вже знає.'
-      : 'Місія складається щоразу заново: букви, яким час повторення, і склади, що даються найважче.',
     exercises,
   };
 }

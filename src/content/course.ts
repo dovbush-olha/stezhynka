@@ -59,8 +59,6 @@ const DRAFT: DayDraft[] = [
       requires: VOWELS,
       newLetters: ['Е', 'И'],
       sticker: '🦔',
-      adultNote:
-        'Згадуємо А, О, У, І і знайомимося з Е та И. Голосні можна співати - протягуйте їх довго: «а-а-а», «и-и-и».',
       exercises: [
         bySound('А', ['А', 'О']),
         find('О', ['О', 'У', 'А']),
@@ -81,7 +79,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: VOWELS,
       sticker: '🐿️',
-      adultNote: 'Закріплюємо всі шість голосних. И та І часто плутаються - це нормально, підказки допоможуть.',
       exercises: [
         bySound('И', ['И', 'Е', 'А']),
         find('Е', ['Е', 'И', 'О'], 'lower'),
@@ -102,8 +99,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: VOWELS,
       sticker: '🐳',
-      adultNote:
-        'Окремо тренуємо И. [и] - як у слові «кит»: ротик ледь відкритий, губи спокійні. [і] - усміхаємося широко. Якщо {name} каже «і» замість «и», покажіть різницю перед дзеркалом.',
       exercises: [
         say('И'),
         find('И', ['И', 'І']),
@@ -131,8 +126,6 @@ const DRAFT: DayDraft[] = [
       requires: withL,
       newLetters: ['Л'],
       sticker: '🐰',
-      adultNote:
-        'Перша приголосна - [л]. Вимовляйте звук протяжно «л-л-л», а не «ел». Найважливіше - не робити паузи між звуками: тягніть [л], поки пальчик не доїде до голосної, і одразу переходьте в неї: «л-л-ла». Не «л… а… ла».',
       exercises: [
         say('И'),
         intro('Л'),
@@ -154,8 +147,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withL,
       sticker: '🦉',
-      adultNote:
-        'Склади з [л] і всіма голосними. Дужка під складом означає «читай разом»: кулька біжить по дужці, і звук тягнеться без зупинки. Якщо {name} читає по одній букві, проведіть пальцем під складом і протягніть разом: «л-л-лі».',
       exercises: [
         blend('Л', 'И'),
         syllable('ли'),
@@ -176,8 +167,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withL,
       sticker: '🐭',
-      adultNote:
-        'Склади, де голосна йде першою: «а-а-ал», «о-о-ол». І перші слова. Слово читаємо по складах, але кожен склад - разом, одним духом: «Ло-ла», а не «Л-о-л-а».',
       exercises: [
         blend('А', 'Л'),
         syllable('ал'),
@@ -203,8 +192,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withL,
       sticker: '🦋',
-      adultNote:
-        'Ще один день з [л]: багато коротких слів, по одному. Найлегші - без подвоєних букв: «Ло-ла», «О-лі», «Лі-лі», «ли-ла». Імена пишуться з великої букви - це можна показати.',
       exercises: [
         say('Л'),
         syllable('ел'),
@@ -226,8 +213,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withL,
       sticker: '🐞',
-      adultNote:
-        'Ще більше окремих слів. У словах з подвоєною [л] («Ал-ла», «Ел-ла») перший склад закінчується на [л], а другий з неї починається - читаємо по дужках.',
       exercises: [
         match('ла', 'лі', 'ли', 'ле'),
         word('лила'),
@@ -249,8 +234,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withL,
       sticker: '🐇',
-      adultNote:
-        'Короткі слова лише з [л] і голосних, кожен склад - два звуки: «А-лі», «Е-лі», «Ло-лі». Так кажемо, коли щось даємо: «дай Алі» (Алі), «дай Лолі» (Лолі).',
       exercises: [
         say('И'),
         syllable('ле'),
@@ -276,8 +259,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withL,
       sticker: '🐹',
-      adultNote:
-        'Ще окремі слова з [л]. «Лили», «лила», «лило» відрізняються лише останнім звуком - нехай {name} дочитує слово до кінця, а не вгадує за початком.',
       exercises: [
         say('И', 'lower'),
         match('ол', 'ал', 'ил'),
@@ -299,8 +280,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withL,
       sticker: '🐤',
-      adultNote:
-        'Перші фрази з двох слів: «у Олі», «Ло-ла ли-ла». Між словами - велика відстань: прочитали одне слово, вдихнули, читаємо наступне. Фрази й складаємо: скажіть фразу по складах, а {name} складе її слово за словом.',
       exercises: [
         say('Л', 'lower'),
         word('Улі'),
@@ -329,8 +308,6 @@ const DRAFT: DayDraft[] = [
       requires: withLM,
       newLetters: ['М'],
       sticker: '🐸',
-      adultNote:
-        'Новий звук [м]: протяжно, губки разом, «м-м-м», як коли щось смачне. Не кажіть «ем». Тягніть [м] і без паузи переходьте в голосну: «м-м-ма».',
       exercises: [
         say('Л'),
         intro('М'),
@@ -352,7 +329,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLM,
       sticker: '🦙',
-      adultNote: 'Склади з [м] і всіма голосними, а потім перші слова з [м]. Для складання скажіть слово по складах: «ма-ма».',
       exercises: [
         blend('М', 'У'),
         syllable('му'),
@@ -374,8 +350,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLM,
       sticker: '🐼',
-      adultNote:
-        'Склади, де [м] у кінці («о-о-ом»), і короткі слова з двох складів. «Ми» - одне слово з одного складу: читаємо разом, «м-м-ми».',
       exercises: [
         say('И'),
         blend('О', 'М'),
@@ -401,7 +375,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLM,
       sticker: '🦫',
-      adultNote: 'Тепер [м] разом з [л]: «ма-ла», «ми-ло», «Мі-ла». Поки що лише окремі слова - фрази будуть згодом.',
       exercises: [
         find('М', ['М', 'Л', 'И'], 'lower'),
         match('ма', 'ла', 'мі', 'лі'),
@@ -423,8 +396,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLM,
       sticker: '🦘',
-      adultNote:
-        'Короткі слова, які відрізняються одним звуком: «ма-ло», «ма-ле», «ма-ла». Хай {name} читає кожне до кінця - останній склад теж важливий.',
       exercises: [
         say('И', 'lower'),
         match('ми', 'мі', 'ма', 'мо'),
@@ -445,7 +416,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLM,
       sticker: '🐨',
-      adultNote: 'Ще короткі слова з [м] і [л]. Якщо {name} плутає «ми» і «мі», нагадайте: [и] - як у слові «кит», [і] - з усмішкою.',
       exercises: [
         bySound('М', ['М', 'Л', 'А'], 'lower'),
         blend('И', 'М'),
@@ -470,7 +440,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLM,
       sticker: '🦒',
-      adultNote: 'Повторюємо всі слова з [м] перед фразами. Для складання скажіть слово по складах: «ла-ма».',
       exercises: [
         say('М', 'lower'),
         match('ам', 'ом', 'им', 'ум'),
@@ -491,8 +460,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLM,
       sticker: '🐑',
-      adultNote:
-        'Фрази з двох слів. Між словами - велика відстань: прочитали одне слово, вдихнули, читаємо наступне. Фрази й складаємо: скажіть фразу по складах, а {name} складе її слово за словом.',
       exercises: [
         say('И', 'lower'),
         word('Мама мила'),
@@ -520,7 +487,6 @@ const DRAFT: DayDraft[] = [
       requires: withLMS,
       newLetters: ['С'],
       sticker: '🐍',
-      adultNote: 'Новий звук [с] - як змійка: «с-с-с». Не кажіть «ес». Тягніть [с] і без паузи переходьте в голосну: «с-с-са».',
       exercises: [
         say('М'),
         intro('С'),
@@ -542,7 +508,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMS,
       sticker: '🐝',
-      adultNote: 'Склади й перші слова з [с], поки що по одному. Для складання скажіть слово по складах: «са-ло».',
       exercises: [
         blend('С', 'У'),
         syllable('су'),
@@ -564,8 +529,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMS,
       sticker: '🐠',
-      adultNote:
-        'Склади, де [с] у кінці («а-а-ас»), і короткі слова з одного складу: «сом», «сім», «сам». Їх читаємо одним духом, тягнучи голосну.',
       exercises: [
         say('И'),
         blend('А', 'С'),
@@ -591,7 +554,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLMS,
       sticker: '🦦',
-      adultNote: 'Ще короткі слова з [с]. «Ли-са» і «лі-си» схожі - нехай {name} уважно дивиться на голосні.',
       exercises: [
         bySound('С', ['С', 'О', 'М'], 'lower'),
         match('си', 'сі', 'се', 'су'),
@@ -612,7 +574,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMS,
       sticker: '🐐',
-      adultNote: 'У слові «мас-ло» перший склад закінчується на [с]: «ма-а-ас». Читаємо по дужках, без зупинки всередині складу.',
       exercises: [
         say('С'),
         blend('И', 'С'),
@@ -633,7 +594,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMS,
       sticker: '🐛',
-      adultNote: 'Повторюємо короткі слова з [с]. Одна - «о-са», багато - «о-си»: різниця лише в останньому звуці.',
       exercises: [
         bySound('И', ['И', 'І', 'С']),
         match('ос', 'ас', 'ус', 'ес'),
@@ -658,7 +618,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLMS,
       sticker: '🦜',
-      adultNote: 'Перше довше слово з трьох складів: «А-лі-са». Читаємо склад за складом, кожен разом.',
       exercises: [
         say('С', 'lower'),
         match('са', 'со', 'си', 'сі'),
@@ -679,8 +638,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMS,
       sticker: '🐗',
-      adultNote:
-        'Фрази з двох слів. Між словами - велика відстань: прочитали одне слово, і лише тоді наступне. «Сім ос» - це сім маленьких ос.',
       exercises: [
         find('С', ['С', 'О', 'Е'], 'lower'),
         word('лиса'),
@@ -708,8 +665,6 @@ const DRAFT: DayDraft[] = [
       requires: withLMSN,
       newLetters: ['Н'],
       sticker: '🐌',
-      adultNote:
-        'Новий звук [н]: протяжно «н-н-н». Не кажіть «ен». Н і М схожі на слух - нічого страшного, якщо плутаються. Склади тягнемо разом: «н-н-на».',
       exercises: [
         say('С'),
         intro('Н'),
@@ -731,7 +686,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSN,
       sticker: '🐢',
-      adultNote: 'Склади й окремі слова з [н]. Для складання скажіть слово по складах: «сі-но», «ли-мон».',
       exercises: [
         blend('Н', 'И'),
         syllable('ни'),
@@ -753,7 +707,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSN,
       sticker: '🦓',
-      adultNote: 'Склади, де [н] у кінці («а-а-ан»), і короткі слова: «ні», «ніс», «син». «Ні-но!» - так кличемо Ніну.',
       exercises: [
         say('И'),
         blend('А', 'Н'),
@@ -779,7 +732,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLMSN,
       sticker: '🐘',
-      adultNote: 'Ще короткі слова з [н]. В іменах «Ан-на» та «Ін-на» перший склад закінчується на [н], а другий з неї починається.',
       exercises: [
         bySound('Н', ['Н', 'М', 'И'], 'lower'),
         match('на', 'но', 'ну', 'не'),
@@ -800,7 +752,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSN,
       sticker: '🦛',
-      adultNote: 'У слові «слон» дві приголосні поспіль: «с-с-слон». Тягніть [с] і одразу переходьте в [л], без паузи.',
       exercises: [
         say('Н'),
         blend('І', 'Н'),
@@ -821,7 +772,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSN,
       sticker: '🦚',
-      adultNote: 'Повторюємо короткі слова з [н]. Н і И схожі на вигляд: у Н поличка рівна, а в И - навскіс.',
       exercises: [
         find('Н', ['Н', 'И', 'М'], 'lower'),
         match('ни', 'ні', 'ми', 'мі'),
@@ -846,7 +796,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLMSN,
       sticker: '🦩',
-      adultNote: 'Довші слова з трьох складів. Довге слово - це просто кілька складів підряд: «а-на-нас».',
       exercises: [
         say('Н', 'lower'),
         match('на', 'ан', 'ни', 'ін'),
@@ -867,7 +816,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSN,
       sticker: '🦝',
-      adultNote: 'Фрази з двох-трьох слів. Між словами - велика відстань: прочитали одне слово, вдихнули, читаємо наступне.',
       exercises: [
         find('Н', ['Н', 'И', 'М'], 'lower'),
         word('Ніна сама'),
@@ -896,8 +844,6 @@ const DRAFT: DayDraft[] = [
       requires: withLMSNK,
       newLetters: ['К'],
       sticker: '🐈',
-      adultNote:
-        'Новий звук [к]: коротко, як крапелька - «к!». Не додавайте «а» в кінці. [к] не протягнеш, тож одразу стрибаємо в голосну і тягнемо її: «ко-о-о».',
       exercises: [
         say('Н'),
         intro('К'),
@@ -919,7 +865,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSNK,
       sticker: '🦌',
-      adultNote: 'Склади й короткі слова з [к]. Для складання скажіть слово по складах: «ко-ло», «кі-но».',
       exercises: [
         blend('К', 'У'),
         syllable('ку'),
@@ -941,7 +886,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSNK,
       sticker: '🐜',
-      adultNote: 'Склади, де [к] у кінці («о-о-ок»), і слова з одного складу: «мак», «лак», «кекс». Голосну тягнемо, [к] - коротко.',
       exercises: [
         say('И'),
         blend('О', 'К'),
@@ -967,7 +911,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLMSNK,
       sticker: '🦗',
-      adultNote: 'Слова, де перший склад закінчується приголосною: «сум-ка», «мис-ка». Читаємо по дужках, кожен склад разом.',
       exercises: [
         bySound('К', ['К', 'Н', 'С'], 'lower'),
         match('ка', 'ко', 'ку', 'ки'),
@@ -988,7 +931,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSNK,
       sticker: '🦥',
-      adultNote: 'Ще слова з [к] з двох складів. Для складання скажіть слово по складах: «но-сок», «ко-кос».',
       exercises: [
         say('К'),
         blend('И', 'К'),
@@ -1009,7 +951,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSNK,
       sticker: '🐓',
-      adultNote: 'Повторюємо короткі слова з [к]. К, Н та И схожі на вигляд - якщо {name} вагається, обведіть букву пальчиком.',
       exercises: [
         find('К', ['К', 'Н', 'И']),
         match('ак', 'ок', 'ик', 'ук'),
@@ -1034,7 +975,6 @@ const DRAFT: DayDraft[] = [
       goal: 'learn',
       requires: withLMSNK,
       sticker: '🐄',
-      adultNote: 'Довгі слова з трьох складів. Читаємо склад за складом: «мо-ло-ко», «ка-ли-на».',
       exercises: [
         say('К'),
         match('ко', 'ка', 'кі', 'ке'),
@@ -1055,7 +995,6 @@ const DRAFT: DayDraft[] = [
       goal: 'reinforce',
       requires: withLMSNK,
       sticker: '🦢',
-      adultNote: 'Фінал! Фрази з усіма буквами. Для складання скажіть фразу по складах.',
       exercises: [
         find('К', ['К', 'Л', 'Н'], 'lower'),
         build('молоко', ['ма', 'ку']),

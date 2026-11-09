@@ -390,27 +390,6 @@
   margin-bottom: 8px;
 }
 
-.adult-note {
-  width: 100%;
-  margin-top: 10px;
-  text-align: left;
-  border-radius: var(--radius-sm);
-  background: var(--lilac-pale);
-  color: #5d4d78;
-  padding: 2px 16px;
-}
-
-.adult-note summary {
-  cursor: pointer;
-  font-weight: 800;
-  padding: 10px 0;
-}
-
-.adult-note p {
-  margin-bottom: 12px;
-  line-height: 1.5;
-}
-
 .sticker-reveal {
   position: relative;
   width: 170px;
