@@ -250,6 +250,15 @@
   box-shadow: 0 1px 0 #c24f70;
 }
 
+/* Дитина слухає свій запис: кнопка спокійна й не натискається. */
+.solo-read--hearing {
+  cursor: default;
+}
+
+.solo-read--hearing .solo-read__star {
+  animation: none;
+}
+
 /* Мікрофон ще вмикається: кнопка вже відповіла на дотик, але крапка ще не пульсує. */
 .solo-read--starting {
   animation: none;

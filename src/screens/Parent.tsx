@@ -717,11 +717,13 @@ interface RecItem {
 /** Плитки «записати / послухати / видалити» для голосу дорослого. */
 function RecordGrid({ items, maxMs, wide = false }: { items: RecItem[]; maxMs: number; wide?: boolean }) {
   const keys = useOwnRecordingKeys();
-  const [recording, setRecording] = useState<{ key: string; stop: () => void } | null>(null);
+  const [recording, setRecording] = useState<{ key: string; stop?: () => void } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const start = async (key: string) => {
     setError(null);
+    // Одразу займаємо плитку: поки мікрофон вмикається, другий запис не почнеться.
+    setRecording({ key });
     try {
       const r = await startRecording(maxMs);
       setRecording({ key, stop: r.stop });
@@ -748,7 +750,7 @@ function RecordGrid({ items, maxMs, wide = false }: { items: RecItem[]; maxMs: n
               {sub && <span className="rec-tile__sound">{sub}</span>}
               <span className="rec-tile__actions">
                 {isRec ? (
-                  <button type="button" className="chip chip--rec" onClick={() => recording.stop()}>
+                  <button type="button" className="chip chip--rec" disabled={!recording.stop} onClick={() => recording.stop?.()}>
                     ⏹ Стоп
                   </button>
                 ) : (

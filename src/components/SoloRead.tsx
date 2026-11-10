@@ -16,11 +16,12 @@ const MIN_MS = 800;
 const untilMin = (since: number) => since + MIN_MS - performance.now();
 const now = () => performance.now();
 
-type Phase = 'idle' | 'starting' | 'recording';
+type Phase = 'idle' | 'starting' | 'recording' | 'hearing';
 
 /**
  * Дитина грається сама і читає вголос. Якщо запис читання увімкнений (так за замовчуванням),
- * дитина записує себе, одразу чує свій голос, а дорослий послухає й відмітить потім.
+ * дитина записує себе, одразу чує свій голос до кінця, а дорослий послухає й відмітить потім.
+ * Похвала й «як правильно» звучать лише після того, як дитина почула себе: інакше вони перебивають її голос.
  * Без мікрофона - звичайна зірочка «Прочитала!». Так само дитина каже звук букви (`say`).
  */
 export function SoloRead({ text, onDone, say = false }: { text: string; onDone: () => void; /** Дитина каже звук букви, а не читає. */ say?: boolean }) {
@@ -87,21 +88,33 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     const blob = await rec.done;
     stopRef.current = undefined;
     if (!alive.current) return;
-    void playBlob(blob);
-    try {
-      await saveReading(text, blob);
-    } catch {
-      // Сховище недоступне - дитина однаково себе почула.
-    }
+    setPhase('hearing');
+    const saved = saveReading(text, blob).catch(() => {
+      // Сховище недоступне - дитина однаково себе почує.
+    });
+    // Запас на випадок, якщо телефон так і не скаже, що звук закінчився.
+    await Promise.race([playBlob(blob), new Promise((r) => window.setTimeout(r, MAX_MS + 1000))]);
+    await saved;
     if (alive.current) onDone();
   };
+
+  if (phase === 'hearing') {
+    return (
+      <button type="button" className="solo-read solo-read--busy solo-read--hearing" disabled>
+        <span className="solo-read__star" aria-hidden="true">
+          🔊
+        </span>
+        Слухаємо
+      </button>
+    );
+  }
 
   if (phase !== 'idle') {
     const recording = phase === 'recording';
     return (
       <button
         type="button"
-        className={`solo-read solo-read--recording${recording ? '' : ' solo-read--starting'}`}
+        className={`solo-read solo-read--busy solo-read--recording${recording ? '' : ' solo-read--starting'}`}
         onClick={requestStop}
       >
         <span className="solo-read__dot" aria-hidden="true" />

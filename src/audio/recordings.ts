@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { BUILTIN_VOICE } from '../content/builtinVoice';
+import { setMicOpen } from './audio';
 import { tx } from './db';
 
 export { soundKey } from '../logic/voice';
@@ -55,51 +56,91 @@ export async function deleteRecording(key: string) {
   setOwn(next);
 }
 
+/**
+ * Звучить завжди щось одне. Кожен новий звук скасовує попередній - і той, що звучить,
+ * і той, що ще читається зі сховища чи завантажується: інакше повільний старий запит
+ * може пізніше перебити новий звук.
+ */
 let current: HTMLAudioElement | undefined;
+let generation = 0;
+/** Поки відкритий мікрофон, нічого не відтворюємо, щоб звук не потрапив у запис. */
+let micOpen = false;
 
-async function playUrl(url: string, onEnded?: () => void): Promise<boolean> {
+/** Зупиняє все, що звучить чи от-от мало зазвучати. Повертає номер нового запиту. */
+function claim(): number {
+  current?.pause();
+  current = undefined;
+  return ++generation;
+}
+
+export function stopPlayback() {
+  claim();
+}
+
+/** Відтворює url і чекає кінця звуку (або поки його перебʼє інший). false - не зазвучало. */
+async function playUrl(url: string, gen: number): Promise<boolean> {
+  if (gen !== generation || micOpen) return false;
+  const el = new Audio(url);
+  current = el;
+  const finished = new Promise<void>((resolve) => {
+    el.onended = el.onpause = el.onerror = () => resolve();
+  });
   try {
-    current?.pause();
-    const el = new Audio(url);
-    current = el;
-    if (onEnded) el.onended = onEnded;
     await el.play();
-    return true;
   } catch {
+    if (current === el) current = undefined;
     return false;
+  }
+  await finished;
+  if (current === el) current = undefined;
+  return true;
+}
+
+async function playBlobAs(blob: Blob, gen: number): Promise<boolean> {
+  const url = URL.createObjectURL(blob);
+  try {
+    return await playUrl(url, gen);
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 
-/** Відтворює запис; попередній, якщо ще звучить, зупиняється. */
-export async function playBlob(blob: Blob): Promise<boolean> {
-  const url = URL.createObjectURL(blob);
-  return playUrl(url, () => URL.revokeObjectURL(url));
+/** Відтворює запис і чекає, поки він дозвучить; попередній звук зупиняється. */
+export function playBlob(blob: Blob): Promise<boolean> {
+  return playBlobAs(blob, claim());
 }
 
 /** Відтворює свій запис дорослого, а якщо його немає - вбудований голос. */
 export async function playRecording(key: string): Promise<boolean> {
+  const gen = claim();
   if (own.has(key)) {
     try {
       const blob = await tx<Blob | undefined>('recordings', 'readonly', (s) => s.get(key));
-      if (blob) return await playBlob(blob);
+      if (blob) return await playBlobAs(blob, gen);
     } catch {
       // Не вдалося прочитати свій запис - спробуємо вбудований голос.
     }
   }
-  return playBuiltinVoice(key);
+  return builtinVoice(key, gen);
 }
 
 /**
  * Відтворює вбудований голос «Стежинки», навіть якщо є свій запис (щоб дорослий міг порівняти).
+ */
+export function playBuiltinVoice(key: string): Promise<boolean> {
+  return builtinVoice(key, claim());
+}
+
+/**
  * Файл беремо через fetch і граємо як blob: Safari не відтворює аудіо, яке service worker
  * віддає з кешу без підтримки Range-запитів.
  */
-export async function playBuiltinVoice(key: string): Promise<boolean> {
+async function builtinVoice(key: string, gen: number): Promise<boolean> {
   const file = BUILTIN_VOICE[key];
   if (!file) return false;
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}voice/${file}`);
-    return response.ok ? await playBlob(await response.blob()) : false;
+    return response.ok ? await playBlobAs(await response.blob(), gen) : false;
   } catch {
     return false;
   }
@@ -132,25 +173,44 @@ export function canRecord(): boolean {
 
 /** Записує звук до виклику stop() або максимум maxMs. `done` - готовий запис. */
 export async function startRecording(maxMs = 2500): Promise<{ stop: () => void; done: Promise<Blob> }> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-  const rec = new MediaRecorder(stream);
-  const chunks: Blob[] = [];
-  rec.ondataavailable = (e) => {
-    if (e.data.size) chunks.push(e.data);
-  };
-  const done = new Promise<Blob>((resolve) => {
-    rec.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop());
-      resolve(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
+  // Тиша перед записом: голос із динаміка чи «бульбашка» дотику інакше потрапляють у запис.
+  claim();
+  setMic(true);
+  let stream: MediaStream | undefined;
+  try {
+    // Шумоподавлення «з'їдає» шиплячі й свистячі (с-с-с, ш-ш-ш), а ехоподавлення на iPhone
+    // вмикає «телефонний» режим звуку. Обидва не потрібні: поки йде запис, нічого не звучить.
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
+    const tracks = stream.getTracks();
+    const rec = new MediaRecorder(stream);
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size) chunks.push(e.data);
     };
-  });
-  const stop = () => {
-    window.clearTimeout(timer);
-    if (rec.state === 'recording') rec.stop();
-  };
-  rec.start();
-  const timer = window.setTimeout(stop, maxMs);
-  return { stop, done };
+    const done = new Promise<Blob>((resolve) => {
+      rec.onstop = () => {
+        tracks.forEach((t) => t.stop());
+        setMic(false);
+        resolve(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
+      };
+    });
+    const stop = () => {
+      window.clearTimeout(timer);
+      if (rec.state === 'recording') rec.stop();
+    };
+    rec.start();
+    const timer = window.setTimeout(stop, maxMs);
+    return { stop, done };
+  } catch (e) {
+    stream?.getTracks().forEach((t) => t.stop());
+    setMic(false);
+    throw e;
+  }
+}
+
+function setMic(open: boolean) {
+  micOpen = open;
+  setMicOpen(open);
 }
 
 /** Питаємо дозвіл на мікрофон заздалегідь, у режимі дорослого, щоб дитина не бачила цього питання. */

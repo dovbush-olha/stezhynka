@@ -10,6 +10,19 @@
   display: flex;
   justify-content: center;
   gap: 12px;
+  transition: opacity 0.2s;
+}
+
+/*
+ * Дитина записує себе чи слухає свій запис: підказки й «послухай» чекають,
+ * інакше голос дорослого перебʼє її голос чи потрапить у запис.
+ */
+.exercise:has(.solo-read--busy) button:not(.solo-read) {
+  pointer-events: none;
+}
+
+.exercise:has(.solo-read--busy) .exercise__tools {
+  opacity: 0.4;
 }
 
 /* ---------- Вибір букви ---------- */

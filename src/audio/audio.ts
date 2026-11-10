@@ -15,7 +15,8 @@ function audio(): AudioContext | undefined {
       sfxBus.gain.value = 1;
       sfxBus.connect(ctx.destination);
     }
-    if (ctx.state === 'suspended') void ctx.resume();
+    // iOS після мікрофона чи дзвінка лишає контекст «interrupted», а не «suspended».
+    if (ctx.state !== 'running' && ctx.state !== 'closed') void ctx.resume();
     return ctx;
   } catch {
     return undefined;
@@ -38,7 +39,19 @@ function tone(freq: number, start: number, duration: number, gain: number, type:
   osc.stop(t + duration + 0.05);
 }
 
-const sfxOn = () => getProgress().settings.sounds;
+let micOpen = false;
+const sfxOn = () => getProgress().settings.sounds && !micOpen;
+
+/**
+ * Поки відкритий мікрофон, звуки застосунку мовчать: інакше «бульбашка» від дотику
+ * чи дзвіночок потрапляють у запис. Те, що вже звучить, глушимо одразу.
+ */
+export function setMicOpen(open: boolean) {
+  micOpen = open;
+  if (!ctx || !sfxBus) return;
+  sfxBus.gain.cancelScheduledValues(ctx.currentTime);
+  sfxBus.gain.setValueAtTime(open ? 0 : 1, ctx.currentTime);
+}
 
 /** М'яка «бульбашка» на кожне натискання: короткий тон, що швидко ковзає вгору. */
 export function tap() {
