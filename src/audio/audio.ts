@@ -40,11 +40,22 @@ function tone(freq: number, start: number, duration: number, gain: number, type:
 
 const sfxOn = () => getProgress().settings.sounds;
 
-/** М'який «бульк» на кожне натискання. */
+/** М'яка «бульбашка» на кожне натискання: короткий тон, що швидко ковзає вгору. */
 export function tap() {
   if (!sfxOn()) return;
-  tone(880, 0, 0.12, 0.05);
-  tone(1320, 0.01, 0.09, 0.02);
+  const c = audio();
+  if (!c) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.frequency.setValueAtTime(420, t);
+  osc.frequency.exponentialRampToValueAtTime(820, t + 0.05);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.16, t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+  osc.connect(g).connect(sfxBus!);
+  osc.start(t);
+  osc.stop(t + 0.16);
 }
 
 /** Дзвіночок за правильну відповідь. */
