@@ -37,3 +37,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Картинка до слова з'являється лише після читання; прослуховування запису рахується як підказка.
 - Підказки поступові: спершу натяк, потім правильна відповідь.
 - Автоматичної оцінки вимови немає: читання вголос відмічає дорослий, а коли дитина грається сама, вправи перевіряються без вимови.
+
+## Agent skills
+
+### Issue tracker
+
+Задачі ведуться в GitHub Issues репозиторію `dovbush-olha/stezhynka`, через `gh` CLI.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Стандартні мітки: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
+See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Один контекст: `GLOSSARY.md` і `docs/adr/` у корені репозиторію.
+See `docs/agents/domain.md`.
