@@ -13,7 +13,7 @@ disable-model-invocation: true
 ## Кроки
 
 1. **Прочитати issue.**
-   `gh issue view <номер> --json title,body,labels,url`.
+   `gh issue view <номер> --json number,title,body,labels,comments,url`.
    Якщо `gh` відповідає «Could not resolve to a Repository» - активний акаунт без доступу до `origin`: `gh auth status`, `gh auth switch --user <власник репозиторію>` і повторити.
 
 2. **Назвати гілку.**

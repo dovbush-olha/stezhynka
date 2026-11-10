@@ -16,7 +16,7 @@ disable-model-invocation: true
 - Гілка не `main`, `git status --short` порожній, `git log --oneline origin/main..HEAD` не порожній (після `git fetch origin`).
   Незакомічені зміни - спитати, чи закомітити їх, і не йти далі без відповіді.
 - Номер issue: з аргументу, інакше `#<номер>` з повідомлень комітів гілки, інакше спитати.
-  Прочитати issue: `gh issue view <номер> --json title,body`.
+  Прочитати issue: `gh issue view <номер> --json number,title,body,labels,comments`.
 
 ## 2. Маршрут
 
