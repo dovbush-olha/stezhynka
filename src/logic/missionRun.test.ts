@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LetterId } from '../content/alphabet';
 import { COURSE_MISSIONS } from '../content/course';
-import type { BuildWordExercise, Exercise, ExerciseKind, Mission } from '../content/types';
+import type { BuildWordExercise, Exercise, ExerciseKind, FindLetterExercise, Mission } from '../content/types';
 import { buildPracticeMission, makeRng } from './generate';
 import { exerciseResult, finishMission, missionExercises, missionSummary, type VoiceChecks } from './missionRun';
 import { applyExerciseResult, createInitialState, unlockLetter, updateSettings, type ExerciseResult, type ProgressState } from './progress';
@@ -26,12 +26,25 @@ function struggled(mode: 'solo' | 'together'): ProgressState {
 }
 
 describe('проходження місії: складання вправ', () => {
-  it('однаковий seed дає ті самі вправи, а різні - інший порядок варіантів', () => {
+  it('однаковий seed дає ті самі вправи', () => {
     const s = struggled('together');
-    const m = mission('l-2');
-    const run = (seed: string) => missionExercises(s, m, TODAY, seed, NO_VOICE);
+    const run = (seed: string) => missionExercises(s, mission('l-2'), TODAY, seed, NO_VOICE);
     expect(run('a')).toEqual(run('a'));
-    const orders = new Set(['a', 'b', 'c', 'd', 'e'].map((seed) => JSON.stringify(run(seed))));
+  });
+
+  it('різний seed переставляє варіанти відповіді, не змінюючи самих вправ місії', () => {
+    const s = updateSettings(createInitialState(TODAY), { mode: 'together' });
+    const m = COURSE_MISSIONS.find((x) => x.exercises.some((e) => e.kind === 'find-letter' && e.options.length >= 3))!;
+    const original = m.exercises.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
+    const orders = new Set<string>();
+    for (const seed of ['a', 'b', 'c', 'd', 'e', 'f']) {
+      // Вправи місії йдуть після розминки, тож беремо кінець списку.
+      const own = missionExercises(s, m, TODAY, seed, NO_VOICE).slice(-m.exercises.length);
+      expect(kinds(own)).toEqual(kinds(m.exercises));
+      const found = own.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
+      expect(found.map((e) => [...e.options].sort())).toEqual(original.map((e) => [...e.options].sort()));
+      orders.add(found.map((e) => e.options.join('')).join('|'));
+    }
     expect(orders.size).toBeGreaterThan(1);
   });
 
