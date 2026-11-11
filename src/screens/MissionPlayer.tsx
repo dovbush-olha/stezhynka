@@ -48,7 +48,7 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [feedback, setFeedback] = useState<HelperFeedback | null>(null);
   const [summary, setSummary] = useState<MissionSummary | null>(null);
-  /** Букви, які відкрилися самі, бо цією місією пройдено все до наступної букви плану. */
+  /** Букви, які відкрилися після цієї місії: їх називає `finishMission`. */
   const [opened, setOpened] = useState<LetterId[]>([]);
 
   const current = exercises[index];
