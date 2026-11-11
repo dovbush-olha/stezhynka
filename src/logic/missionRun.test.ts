@@ -11,6 +11,7 @@ const TODAY = '2026-11-05';
 
 const NO_VOICE: VoiceChecks = { hasSound: () => false, hasSay: () => false };
 const SOUNDS_ONLY: VoiceChecks = { hasSound: () => true, hasSay: () => false };
+const SAY_ONLY: VoiceChecks = { hasSound: () => false, hasSay: () => true };
 
 const mission = (id: string): Mission => COURSE_MISSIONS.find((m) => m.id === id)!;
 const kinds = (exercises: readonly Exercise[]): ExerciseKind[] => exercises.map((e) => e.kind);
@@ -66,6 +67,16 @@ describe('проходження місії: складання вправ', () 
     // З дорослим поруч такі вправи є - і в місіях, і в розминці, тож перевірка не порожня.
     expect(byEar(all(struggled('together'))).length).toBeGreaterThan(0);
     expect(byEar(all(struggled('solo')))).toEqual([]);
+  });
+
+  it('сама дитина шукає на слух лише те, що записано: звуки букв і прочитані склади перевіряються окремо', () => {
+    const s = struggled('solo');
+    const count = (voice: VoiceChecks, kind: ExerciseKind) =>
+      COURSE_MISSIONS.flatMap((m) => missionExercises(s, m, TODAY, m.id, voice)).filter((e) => e.kind === kind).length;
+    expect(count(SOUNDS_ONLY, 'letter-by-sound')).toBeGreaterThan(0);
+    expect(count(SOUNDS_ONLY, 'pick-by-ear')).toBe(0);
+    expect(count(SAY_ONLY, 'pick-by-ear')).toBeGreaterThan(0);
+    expect(count(SAY_ONLY, 'letter-by-sound')).toBe(0);
   });
 
   it('із записом звуку букви «знайди букву» стає «послухай і знайди» в обох режимах', () => {
