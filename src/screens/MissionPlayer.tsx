@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Re
 import { helperName } from '../content/helpers';
 import { personalize } from '../content/child';
 import { INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION } from '../content/phrases';
-import type { Exercise, Mission } from '../content/types';
+import type { Mission } from '../content/types';
 import { fanfare, sparkle } from '../audio/audio';
 import { hasRecording, soundKey } from '../audio/recordings';
 import { ExerciseView } from '../components/exercises/ExerciseView';
@@ -10,10 +10,8 @@ import type { HelperFeedback } from '../components/exercises/types';
 import { Helper } from '../components/Helper';
 import { plural } from '../components/text';
 import { ColoredText, Confetti } from '../components/ui';
-import { makeRng, prepareExercise, warmUp } from '../logic/generate';
-import { applyExerciseResult, completeMission, todayISO, type ExerciseResult, type MissionSummary } from '../logic/progress';
-import { practisedItems } from '../logic/review';
-import { adaptForSolo, preferRecordedVoice } from '../logic/solo';
+import { exerciseResult, finishMission, missionExercises } from '../logic/missionRun';
+import { applyExerciseResult, todayISO, type ExerciseResult, type MissionSummary } from '../logic/progress';
 import { sayKey } from '../logic/voice';
 import { getWord, isPhrase } from '../content/words';
 import type { LetterId } from '../content/alphabet';
@@ -36,24 +34,21 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
   const solo = mode === 'solo';
   const [runId] = useState(() => `${mission.id}-${Date.now()}`);
 
-  const exercises = useMemo<Exercise[]>(() => {
-    const rng = makeRng(runId);
-    const state = getProgress();
-    const hasSound = (l: LetterId) => hasRecording(soundKey(l));
-    const hasSay = (text: string) => hasRecording(sayKey(text));
-    const warm = mission.goal === 'practice' ? [] : warmUp(state, mission, todayISO(), rng);
-    return [...warm, ...mission.exercises]
-      .map((e) => preferRecordedVoice(e, hasSound))
-      .map((e) => (state.settings.mode === 'solo' ? adaptForSolo(e, hasSound, rng, hasSay) : e))
-      .map((e) => prepareExercise(e, rng));
-  }, [mission, runId]);
+  const exercises = useMemo(
+    () =>
+      missionExercises(getProgress(), mission, todayISO(), runId, {
+        hasSound: (l) => hasRecording(soundKey(l)),
+        hasSay: (text) => hasRecording(sayKey(text)),
+      }),
+    [mission, runId],
+  );
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [feedback, setFeedback] = useState<HelperFeedback | null>(null);
   const [summary, setSummary] = useState<MissionSummary | null>(null);
-  /** Букви, які відкрилися самі, бо цією місією пройдено попередній день. */
+  /** Букви, які відкрилися після цієї місії: їх називає `finishMission`. */
   const [opened, setOpened] = useState<LetterId[]>([]);
 
   const current = exercises[index];
@@ -64,7 +59,7 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
 
   const handleComplete = (result: ExerciseResult) => {
     if (completed) return;
-    const r: ExerciseResult = { ...result, items: practisedItems(current, result.hinted) };
+    const r = exerciseResult(current, result);
     setResults((prev) => [...prev, r]);
     updateProgress((s) => applyExerciseResult(s, r, todayISO()));
     window.setTimeout(sparkle, 650);
@@ -76,20 +71,10 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
       setFeedback(null);
       return;
     }
-    const scored = results.filter((r) => !r.unscored);
-    const reading = results.flatMap((r) => (r.reading ? [r.reading] : []));
-    const s: MissionSummary = {
-      missionId: mission.id,
-      sticker: mission.sticker,
-      scored: scored.length,
-      hinted: scored.filter((r) => r.hinted).length,
-      readAlone: reading.filter((r) => r.alone).length,
-      readTotal: reading.length,
-    };
-    setSummary(s);
-    const before = getProgress().unlocked;
-    updateProgress((st) => completeMission(st, s, todayISO()));
-    setOpened(getProgress().unlocked.filter((l) => !before.includes(l)));
+    const done = finishMission(getProgress(), mission, results, todayISO());
+    updateProgress(() => done.state);
+    setSummary(done.summary);
+    setOpened(done.opened);
     setPhase('done');
     fanfare();
   };

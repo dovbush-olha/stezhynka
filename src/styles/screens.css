@@ -651,6 +651,8 @@
 .segmented--compact .segmented__item {
   padding: 8px 18px;
   font-size: 1.1rem;
+  /* Варіанти мають однакову ширину, тож без цього довший («З дорослим») ламається на два рядки. */
+  white-space: nowrap;
 }
 
 .suggestion {
