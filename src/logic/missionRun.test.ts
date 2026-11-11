@@ -15,6 +15,9 @@ const SAY_ONLY: VoiceChecks = { hasSound: () => false, hasSay: () => true };
 
 const mission = (id: string): Mission => COURSE_MISSIONS.find((m) => m.id === id)!;
 const kinds = (exercises: readonly Exercise[]): ExerciseKind[] => exercises.map((e) => e.kind);
+/** Вправи без порядку варіантів відповіді: перемішування змінює лише його. */
+const withoutOrder = (exercises: readonly Exercise[]) =>
+  exercises.map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? [...v].sort() : v])));
 
 /** Стан після всіх місій з підказками всюди: розминці є що повторювати. */
 function struggled(mode: 'solo' | 'together'): ProgressState {
@@ -52,7 +55,11 @@ describe('проходження місії: складання вправ', () 
   it('перед місією йде розминка, а перед «Повторенням у лісі» - ні', () => {
     const s = struggled('together');
     const m = mission('l-2');
-    expect(missionExercises(s, m, TODAY, 'w', NO_VOICE).length).toBeGreaterThan(m.exercises.length);
+    const run = missionExercises(s, m, TODAY, 'w', NO_VOICE);
+    expect(run.length).toBeGreaterThan(m.exercises.length);
+    // Розминка стоїть на початку: вправи самої місії - наприкінці, у своєму порядку.
+    expect(withoutOrder(run.slice(-m.exercises.length))).toEqual(withoutOrder(m.exercises));
+    expect(withoutOrder(run.slice(0, m.exercises.length))).not.toEqual(withoutOrder(m.exercises));
     const practice = buildPracticeMission(s, TODAY, makeRng('p'));
     expect(missionExercises(s, practice, TODAY, 'w', NO_VOICE)).toHaveLength(practice.exercises.length);
   });
@@ -79,13 +86,15 @@ describe('проходження місії: складання вправ', () 
     expect(count(SAY_ONLY, 'letter-by-sound')).toBe(0);
   });
 
-  it('із записом звуку букви «знайди букву» стає «послухай і знайди» в обох режимах', () => {
-    const m = COURSE_MISSIONS.find((x) => x.exercises.some((e) => e.kind === 'find-letter'))!;
+  it('із записом звуку букви «знайди букву» стає «послухай і знайди» в обох режимах - і в розминці теж', () => {
     for (const mode of ['solo', 'together'] as const) {
-      // Свіжий стан: розминці ще нічого повторювати, тож вправи - лише з місії.
-      const s = updateSettings(createInitialState(TODAY), { mode });
-      expect(kinds(missionExercises(s, m, TODAY, 'v', NO_VOICE)), mode).toContain('find-letter');
-      const voiced = kinds(missionExercises(s, m, TODAY, 'v', SOUNDS_ONLY));
+      const s = struggled(mode);
+      const run = (voice: VoiceChecks) => COURSE_MISSIONS.map((m) => ({ m, exercises: missionExercises(s, m, TODAY, m.id, voice) }));
+      const silent = run(NO_VOICE);
+      // Без записів «знайди букву» є і в місіях, і в розминці, тож перевірка не порожня.
+      expect(kinds(silent.flatMap((r) => r.exercises.slice(-r.m.exercises.length))), mode).toContain('find-letter');
+      expect(kinds(silent.flatMap((r) => r.exercises.slice(0, -r.m.exercises.length))), mode).toContain('find-letter');
+      const voiced = kinds(run(SOUNDS_ONLY).flatMap((r) => r.exercises));
       expect(voiced, mode).not.toContain('find-letter');
       expect(voiced, mode).toContain('letter-by-sound');
     }
