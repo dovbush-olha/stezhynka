@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Re
 import { helperName } from '../content/helpers';
 import { personalize } from '../content/child';
 import { INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION } from '../content/phrases';
-import type { Exercise, Mission } from '../content/types';
+import type { Mission } from '../content/types';
 import { fanfare, sparkle } from '../audio/audio';
 import { hasRecording, soundKey } from '../audio/recordings';
 import { ExerciseView } from '../components/exercises/ExerciseView';
@@ -34,12 +34,14 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
   const solo = mode === 'solo';
   const [runId] = useState(() => `${mission.id}-${Date.now()}`);
 
-  const exercises = useMemo<Exercise[]>(() => {
-    return missionExercises(getProgress(), mission, todayISO(), runId, {
-      hasSound: (l) => hasRecording(soundKey(l)),
-      hasSay: (text) => hasRecording(sayKey(text)),
-    });
-  }, [mission, runId]);
+  const exercises = useMemo(
+    () =>
+      missionExercises(getProgress(), mission, todayISO(), runId, {
+        hasSound: (l) => hasRecording(soundKey(l)),
+        hasSay: (text) => hasRecording(sayKey(text)),
+      }),
+    [mission, runId],
+  );
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [index, setIndex] = useState(0);
