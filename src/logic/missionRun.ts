@@ -1,14 +1,13 @@
+/**
+ * Проходження місії: з чого воно складається, що дає кожна вправа і чим закінчується.
+ * Екран лише показує вправи й передає сюди результати.
+ */
 import type { LetterId } from '../content/alphabet';
 import type { Exercise, Mission } from '../content/types';
 import { makeRng, prepareExercise, warmUp } from './generate';
 import { completeMission, type ExerciseResult, type MissionSummary, type ProgressState } from './progress';
 import { practisedItems } from './review';
 import { adaptForSolo, preferRecordedVoice } from './solo';
-
-/**
- * Проходження місії: з чого воно складається, що дає кожна вправа і чим закінчується.
- * Екран лише показує вправи й передає сюди результати.
- */
 
 /** Чи є живий голос: без нього вправи на слух дитина сама не виконає. */
 export interface VoiceChecks {
