@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 .claude-config
 .envrc
+
+# Claude Code: у репозиторії лише спільні скіли й налаштування
+.claude/worktrees/
+.claude/settings.local.json

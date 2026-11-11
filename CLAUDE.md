@@ -40,6 +40,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Agent skills
 
+### Шлях задачі
+
+`/take <номер>` → реалізація → `/finish <номер>` → PR.
+Скіли робочого процесу цього репозиторію лежать у `.claude/skills/` і комітяться; перевірка перед PR - скіл `task-verify`.
+
 ### Issue tracker
 
 Задачі ведуться в GitHub Issues репозиторію `dovbush-olha/stezhynka`, через `gh` CLI.
