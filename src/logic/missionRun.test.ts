@@ -75,7 +75,10 @@ describe('проходження місії: складання вправ', () 
         seeds.flatMap((seed) => missionExercises(s, m, TODAY, `${m.id}-${seed}`, NO_VOICE)),
       );
     // З дорослим поруч такі вправи є - і в місіях, і в розминці, тож перевірка не порожня.
-    expect(byEar(all(struggled('together'))).length).toBeGreaterThan(0);
+    const together = struggled('together');
+    const withAdult = COURSE_MISSIONS.map((m) => ({ m, run: missionExercises(together, m, TODAY, m.id, NO_VOICE) }));
+    expect(byEar(withAdult.flatMap((r) => ownPart(r.run, r.m))).length).toBeGreaterThan(0);
+    expect(byEar(withAdult.flatMap((r) => warmUpPart(r.run, r.m))).length).toBeGreaterThan(0);
     expect(byEar(all(struggled('solo')))).toEqual([]);
   });
 
