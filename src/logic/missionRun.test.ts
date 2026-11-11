@@ -15,6 +15,10 @@ const SAY_ONLY: VoiceChecks = { hasSound: () => false, hasSay: () => true };
 
 const mission = (id: string): Mission => COURSE_MISSIONS.find((m) => m.id === id)!;
 const kinds = (exercises: readonly Exercise[]): ExerciseKind[] => exercises.map((e) => e.kind);
+/** Вправи самої місії: вони йдуть після розминки, тож це кінець проходження. */
+const ownPart = (run: readonly Exercise[], m: Mission) => run.slice(-m.exercises.length);
+/** Розминка: усе, що стоїть перед вправами самої місії. */
+const warmUpPart = (run: readonly Exercise[], m: Mission) => run.slice(0, -m.exercises.length);
 /** Вправи без порядку варіантів відповіді: перемішування змінює лише його. */
 const withoutOrder = (exercises: readonly Exercise[]) =>
   exercises.map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? [...v].sort() : v])));
@@ -42,8 +46,7 @@ describe('проходження місії: складання вправ', () 
     const original = m.exercises.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
     const orders = new Set<string>();
     for (const seed of ['a', 'b', 'c', 'd', 'e', 'f']) {
-      // Вправи місії йдуть після розминки, тож беремо кінець списку.
-      const own = missionExercises(s, m, TODAY, seed, NO_VOICE).slice(-m.exercises.length);
+      const own = ownPart(missionExercises(s, m, TODAY, seed, NO_VOICE), m);
       expect(kinds(own)).toEqual(kinds(m.exercises));
       const found = own.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
       expect(found.map((e) => [...e.options].sort())).toEqual(original.map((e) => [...e.options].sort()));
@@ -58,7 +61,7 @@ describe('проходження місії: складання вправ', () 
     const run = missionExercises(s, m, TODAY, 'w', NO_VOICE);
     expect(run.length).toBeGreaterThan(m.exercises.length);
     // Розминка стоїть на початку: вправи самої місії - наприкінці, у своєму порядку.
-    expect(withoutOrder(run.slice(-m.exercises.length))).toEqual(withoutOrder(m.exercises));
+    expect(withoutOrder(ownPart(run, m))).toEqual(withoutOrder(m.exercises));
     expect(withoutOrder(run.slice(0, m.exercises.length))).not.toEqual(withoutOrder(m.exercises));
     const practice = buildPracticeMission(s, TODAY, makeRng('p'));
     expect(missionExercises(s, practice, TODAY, 'w', NO_VOICE)).toHaveLength(practice.exercises.length);
@@ -92,8 +95,8 @@ describe('проходження місії: складання вправ', () 
       const run = (voice: VoiceChecks) => COURSE_MISSIONS.map((m) => ({ m, exercises: missionExercises(s, m, TODAY, m.id, voice) }));
       const silent = run(NO_VOICE);
       // Без записів «знайди букву» є і в місіях, і в розминці, тож перевірка не порожня.
-      expect(kinds(silent.flatMap((r) => r.exercises.slice(-r.m.exercises.length))), mode).toContain('find-letter');
-      expect(kinds(silent.flatMap((r) => r.exercises.slice(0, -r.m.exercises.length))), mode).toContain('find-letter');
+      expect(kinds(silent.flatMap((r) => ownPart(r.exercises, r.m))), mode).toContain('find-letter');
+      expect(kinds(silent.flatMap((r) => warmUpPart(r.exercises, r.m))), mode).toContain('find-letter');
       const voiced = kinds(run(SOUNDS_ONLY).flatMap((r) => r.exercises));
       expect(voiced, mode).not.toContain('find-letter');
       expect(voiced, mode).toContain('letter-by-sound');
