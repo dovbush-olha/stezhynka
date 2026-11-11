@@ -43,13 +43,11 @@ describe('проходження місії: складання вправ', () 
   it('різний seed переставляє варіанти відповіді, не змінюючи самих вправ місії', () => {
     const s = updateSettings(createInitialState(TODAY), { mode: 'together' });
     const m = COURSE_MISSIONS.find((x) => x.exercises.some((e) => e.kind === 'find-letter' && e.options.length >= 3))!;
-    const original = m.exercises.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
     const orders = new Set<string>();
     for (const seed of ['a', 'b', 'c', 'd', 'e', 'f']) {
       const own = ownPart(missionExercises(s, m, TODAY, seed, NO_VOICE), m);
-      expect(kinds(own)).toEqual(kinds(m.exercises));
+      expect(withoutOrder(own)).toEqual(withoutOrder(m.exercises));
       const found = own.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
-      expect(found.map((e) => [...e.options].sort())).toEqual(original.map((e) => [...e.options].sort()));
       orders.add(found.map((e) => e.options.join('')).join('|'));
     }
     expect(orders.size).toBeGreaterThan(1);
