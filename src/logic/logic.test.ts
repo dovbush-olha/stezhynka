@@ -81,6 +81,21 @@ describe('стан прогресу', () => {
     expect(saved(true)).not.toHaveProperty('mode');
   });
 
+  it('пошкоджені режим чи запис читання у збереженні не ламають налаштувань', () => {
+    const saved = (settings: Record<string, unknown>) => {
+      const raw = JSON.parse(JSON.stringify(createInitialState(TODAY)));
+      raw.settings = { ...raw.settings, ...settings };
+      return normalizeState(raw, TODAY).settings;
+    };
+    // Невідомий режим - як без режиму: лишається збережене значення запису, а без нього - типове (увімкнено).
+    expect(saved({ mode: 'щось', recordReading: false }).recordReading).toBe(false);
+    expect(saved({ mode: 42, recordReading: 'так' }).recordReading).toBe(true);
+    expect(saved({ mode: 42 })).not.toHaveProperty('mode');
+    // «З дорослим» вимикає запис, хоч би яким було збережене значення запису.
+    expect(saved({ mode: 'together', recordReading: 'так' }).recordReading).toBe(false);
+    expect(saved({ mode: 'together', recordReading: undefined }).recordReading).toBe(false);
+  });
+
   it('зірочки лише додаються - і за підказку теж', () => {
     let s = createInitialState(TODAY);
     s = applyExerciseResult(s, { hinted: true }, TODAY);
