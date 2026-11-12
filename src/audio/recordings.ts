@@ -18,6 +18,7 @@ const BUILTIN_KEYS: ReadonlySet<string> = new Set(Object.keys(BUILTIN_VOICE));
 let own = new Set<string>();
 /** Усе, що можна відтворити: свої записи й вбудований голос. */
 let playable: ReadonlySet<string> = BUILTIN_KEYS;
+/** Підписники на все, що тут змінюється: записи й доступність мікрофона. */
 let listeners: Array<() => void> = [];
 
 function setOwn(next: Set<string>) {
@@ -178,28 +179,20 @@ export function canRecord(): boolean {
  * Тимчасовий збій (мікрофон зайнятий) сюди не потрапляє: його переживає лише та вправа, де він стався.
  */
 let micBlocked = false;
-const micListeners = new Set<() => void>();
 
 function setMicBlocked(blocked: boolean) {
   if (micBlocked === blocked) return;
   micBlocked = blocked;
-  micListeners.forEach((l) => l());
+  listeners.forEach((l) => l());
 }
 
 /** Чи вийде записати голос просто зараз: пристрій уміє записувати, і мікрофон не відмовив. */
-export function micAvailable(): boolean {
+function micAvailable(): boolean {
   return canRecord() && !micBlocked;
 }
 
-function subscribeMic(l: () => void) {
-  micListeners.add(l);
-  return () => {
-    micListeners.delete(l);
-  };
-}
-
 export function useMicAvailable(): boolean {
-  return useSyncExternalStore(subscribeMic, micAvailable, micAvailable);
+  return useSyncExternalStore(subscribe, micAvailable, micAvailable);
 }
 
 /**

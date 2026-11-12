@@ -652,12 +652,7 @@ function RecordReadingSwitch() {
         </span>
         <input type="checkbox" checked={recordReading && supported} disabled={!supported} onChange={(e) => void toggle(e.target.checked)} />
       </label>
-      {!supported && (
-        <p className="warning">
-          Запис доступний, коли застосунок відкрито через захищене з’єднання (https) або на цьому комп’ютері (localhost). Поки що читання відмічаєте
-          ви, одразу.
-        </p>
-      )}
+      {!supported && <p className="warning">{HTTPS_WARNING} Поки що читання відмічаєте ви, одразу.</p>}
       {supported && recordReading && !available && !error && (
         <p className="warning">
           Мікрофон заборонений або недоступний, тож поки що читання відмічаєте ви, одразу. Щоб записувати, дозвольте доступ до мікрофона в

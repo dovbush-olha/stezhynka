@@ -76,7 +76,7 @@ function normalizeSettings(raw: unknown): Settings {
     helper: isHelperId(r.helper) ? r.helper : d.helper,
     // Раніше був ще вибір режиму. «З дорослим» читання відмічав дорослий поруч - це і є «без запису»;
     // мікрофон у такому режимі не вмикався, тож і після оновлення застосунок сам його не попросить.
-    recordReading: r.mode === 'together' ? false : typeof r.recordReading === 'boolean' ? r.recordReading : d.recordReading,
+    recordReading: r.mode !== 'together' && (typeof r.recordReading === 'boolean' ? r.recordReading : d.recordReading),
     openHints: typeof r.openHints === 'boolean' ? r.openHints : d.openHints,
     // Збережений прогрес без поля child - з часів, коли застосунок був лише для Майї.
     child: isChild(r.child) ? r.child : 'child' in r ? null : LEGACY_CHILD,
