@@ -4,8 +4,8 @@ import { HINTS, PRAISE, PRAISE_AFTER_HINT, pick } from '../../content/phrases';
 import type { SaySoundExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
-import { SoloRead } from '../SoloRead';
-import { HintButton, ListenButton, ReadingMarks } from '../ui';
+import { ReadAloud } from '../ReadAloud';
+import { HintButton, ListenButton } from '../ui';
 import type { ExerciseProps } from './types';
 
 /**
@@ -14,9 +14,9 @@ import type { ExerciseProps } from './types';
  *
  * Підказки поступові: спершу картинка-асоціація (🦊 - л-л-лисичка), потім запис звука дорослого.
  * Після відповіді звучить запис і з'являється картинка, щоб дитина перевірила себе.
- * З дорослим відповідь іде в повторення букв одразу; сама - через запис, який дорослий послухає потім.
+ * Дорослий поруч - відповідь іде в повторення букв одразу; із записом - коли дорослий послухає його потім.
  */
-export function SaySound({ exercise, solo, completed, onFeedback, onComplete }: ExerciseProps<SaySoundExercise>) {
+export function SaySound({ exercise, readingCheck, completed, onFeedback, onComplete }: ExerciseProps<SaySoundExercise>) {
   const info = LETTERS[exercise.letter];
   // «кит» для И: звук не на початку слова.
   const glyph = exercise.letterCase === 'lower' ? toLower(info.id) : info.id;
@@ -43,12 +43,22 @@ export function SaySound({ exercise, solo, completed, onFeedback, onComplete }: 
     }
   };
 
-  const finish = (alone: boolean) => {
-    const hinted = level > 0 || !alone;
+  const praise = (hinted: boolean) => {
     chime();
     onFeedback({ mood: 'cheer', text: pick(hinted ? PRAISE_AFTER_HINT : PRAISE) });
-    // Сама: ніхто не чув, що вона сказала, тож у повторення букв не пишемо - це зробить дорослий за записом.
-    onComplete({ hinted, letters: solo ? [] : [{ id: info.id, firstTry: !hinted }] });
+  };
+
+  const mark = (alone: boolean) => {
+    const hinted = level > 0 || !alone;
+    praise(hinted);
+    onComplete({ hinted, letters: [{ id: info.id, firstTry: !hinted }] });
+  };
+
+  // Записано: ще ніхто не чув, що сказала дитина, тож у повторення букв піде відмітка дорослого за записом.
+  const saved = () => {
+    const hinted = level > 0;
+    praise(hinted);
+    onComplete({ hinted, letters: [] });
   };
 
   return (
@@ -73,7 +83,7 @@ export function SaySound({ exercise, solo, completed, onFeedback, onComplete }: 
             {level >= 2 && <ListenButton onPlay={play} />}
             <HintButton onClick={hint} disabled={level >= maxLevel} />
           </div>
-          {solo ? <SoloRead text={info.id} say onDone={() => finish(true)} /> : <ReadingMarks say onMark={finish} />}
+          <ReadAloud text={info.id} say check={readingCheck} expected={`${info.sound} - ${info.say}`} onRecorded={saved} onMark={mark} />
         </>
       )}
       {completed && recorded && <ListenButton onPlay={play} />}

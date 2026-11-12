@@ -22,15 +22,6 @@ export function ColoredText({ text, className = '' }: { text: string; className?
   );
 }
 
-/** Що дорослому сказати вголос, коли звук чи слово не звучить його записом. */
-export function SayAloud({ children }: { children: ReactNode }) {
-  return (
-    <p className="say-aloud">
-      Скажіть: <b>{children}</b>
-    </p>
-  );
-}
-
 export function HintButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" className="hint-button" onClick={onClick} disabled={disabled}>
@@ -39,12 +30,29 @@ export function HintButton({ onClick, disabled }: { onClick: () => void; disable
   );
 }
 
-/** Дорослий відмічає, як дитина прочитала. Обидва варіанти - позитивні. */
-export function ReadingMarks({ onMark, say = false }: { onMark: (alone: boolean) => void; /** Звук букви, а не читання. */ say?: boolean }) {
+/**
+ * Дорослий, який сидить поруч, відмічає, як дитина прочитала. Обидва варіанти - позитивні.
+ * `expected` підказує йому, що має прозвучати, щоб перевірити правильно.
+ */
+export function ReadingMarks({
+  onMark,
+  say = false,
+  expected,
+}: {
+  onMark: (alone: boolean) => void;
+  /** Звук букви, а не читання. */
+  say?: boolean;
+  expected?: ReactNode;
+}) {
   const child = useChild();
   return (
     <div className="reading-marks">
       <span className="reading-marks__label">Дорослому: як вийшло?</span>
+      {expected && (
+        <span className="reading-marks__expected">
+          Має прозвучати: <b>{expected}</b>
+        </span>
+      )}
       <div className="reading-marks__buttons">
         <button type="button" className="mark mark--alone" onClick={() => onMark(true)}>
           <span aria-hidden="true">⭐</span> {personalize(say ? '{Сказала сама|Сказав сам}' : '{Прочитала сама|Прочитав сам}', child)}
@@ -54,19 +62,6 @@ export function ReadingMarks({ onMark, say = false }: { onMark: (alone: boolean)
         </button>
       </div>
     </div>
-  );
-}
-
-/** Дитина грається сама: позначає, що прочитала вголос. */
-export function SoloReadButton({ onDone, say = false }: { onDone: () => void; say?: boolean }) {
-  const child = useChild();
-  return (
-    <button type="button" className="solo-read" onClick={onDone}>
-      <span className="solo-read__star" aria-hidden="true">
-        ⭐
-      </span>
-      {personalize(say ? '{Сказала|Сказав}!' : '{Прочитала|Прочитав}!', child)}
-    </button>
   );
 }
 

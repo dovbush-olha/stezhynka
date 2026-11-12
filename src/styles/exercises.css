@@ -17,11 +17,11 @@
  * Дитина записує себе чи слухає свій запис: підказки й «послухай» чекають,
  * інакше голос дорослого перебʼє її голос чи потрапить у запис.
  */
-.exercise:has(.solo-read--busy) button:not(.solo-read) {
+.exercise:has(.read-aloud--busy) button:not(.read-aloud) {
   pointer-events: none;
 }
 
-.exercise:has(.solo-read--busy) .exercise__tools {
+.exercise:has(.read-aloud--busy) .exercise__tools {
   opacity: 0.4;
 }
 

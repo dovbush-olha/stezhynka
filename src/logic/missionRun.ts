@@ -20,17 +20,16 @@ export interface VoiceChecks {
 /**
  * Вправи одного проходження: розминка (крім «Повторення в лісі», яке саме є повторенням) і вправи місії.
  * Кроки йдуть у цьому порядку: спершу «знайди букву» стає пошуком на слух, якщо є запис;
- * потім режим «сама» замінює вправи, яких без дорослого не виконати, на посильні (і в розминці теж);
+ * потім вправи, де дорослий мав би говорити чи перевіряти, замінюються на ті, які дитина виконає сама (і в розминці теж);
  * наостанок перемішуються варіанти відповідей - уже тих вправ, які побачить дитина.
  * Той самий seed дає ті самі вправи, щоб місія не змінювалася під час перемальовування.
  */
 export function missionExercises(state: ProgressState, mission: Mission, today: string, seed: string, voice: VoiceChecks): Exercise[] {
   const rng = makeRng(seed);
-  const solo = state.settings.mode === 'solo';
   const warm = mission.goal === 'practice' ? [] : warmUp(state, mission, today, rng);
   return [...warm, ...mission.exercises]
     .map((e) => preferRecordedVoice(e, voice.hasSound))
-    .map((e) => (solo ? adaptForSolo(e, voice.hasSound, rng, voice.hasSay) : e))
+    .map((e) => adaptForSolo(e, voice.hasSound, rng, voice.hasSay))
     .map((e) => prepareExercise(e, rng));
 }
 

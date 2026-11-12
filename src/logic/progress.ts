@@ -45,9 +45,10 @@ export interface Settings {
   readingCase: 'upper' | 'natural';
   theme: 'day' | 'night';
   helper: HelperId;
-  /** «solo» - дитина грається сама на телефоні; «together» - поруч дорослий, який відмічає читання. */
-  mode: 'solo' | 'together';
-  /** Коли дитина грається сама, її читання записується, щоб дорослий потім послухав і відмітив. */
+  /**
+   * Читання вголос записується, щоб дорослий потім послухав і відмітив.
+   * Вимкнено - дорослий сидить поруч і відмічає одразу (див. `readingCheck`).
+   */
   recordReading: boolean;
   /** Склади з дужками й кнопка 🔊 видно одразу; вимкнено - лише після «Підказка». */
   openHints: boolean;
@@ -60,7 +61,6 @@ export const DEFAULT_SETTINGS: Settings = {
   readingCase: 'upper',
   theme: 'day',
   helper: 'fox',
-  mode: 'solo',
   recordReading: true,
   openHints: true,
   child: null,
@@ -74,8 +74,9 @@ function normalizeSettings(raw: unknown): Settings {
     readingCase: r.readingCase === 'natural' || r.readingCase === 'upper' ? r.readingCase : d.readingCase,
     theme: r.theme === 'night' || r.theme === 'day' ? r.theme : d.theme,
     helper: isHelperId(r.helper) ? r.helper : d.helper,
-    mode: r.mode === 'together' || r.mode === 'solo' ? r.mode : d.mode,
-    recordReading: typeof r.recordReading === 'boolean' ? r.recordReading : d.recordReading,
+    // Раніше був ще вибір режиму. «З дорослим» читання відмічав дорослий поруч - це і є «без запису»;
+    // мікрофон у такому режимі не вмикався, тож і після оновлення застосунок сам його не попросить.
+    recordReading: r.mode === 'together' ? false : typeof r.recordReading === 'boolean' ? r.recordReading : d.recordReading,
     openHints: typeof r.openHints === 'boolean' ? r.openHints : d.openHints,
     // Збережений прогрес без поля child - з часів, коли застосунок був лише для Майї.
     child: isChild(r.child) ? r.child : 'child' in r ? null : LEGACY_CHILD,

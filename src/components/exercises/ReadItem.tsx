@@ -3,8 +3,8 @@ import { HINTS, PRAISE, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, pick } fr
 import type { ReadSyllableExercise, ReadWordExercise } from '../../content/types';
 import { getWord } from '../../content/words';
 import { chime } from '../../audio/audio';
-import { SoloRead } from '../SoloRead';
-import { ColoredText, HintButton, ReadingMarks, SayButton } from '../ui';
+import { ReadAloud } from '../ReadAloud';
+import { ColoredText, HintButton, SayButton } from '../ui';
 import { caseText, glide } from '../text';
 import { Syllable, SyllableSplit } from './SyllableSplit';
 import type { ExerciseProps } from './types';
@@ -18,7 +18,7 @@ type Props = ExerciseProps<ReadSyllableExercise | ReadWordExercise>;
  * так дитина звикає читати «л… а…», а треба злито.
  * Послухати, як правильно, - це підказка: так і рахуємо.
  */
-export function ReadItem({ exercise, readingCase, solo, openHints, completed, onFeedback, onComplete }: Props) {
+export function ReadItem({ exercise, readingCase, readingCheck, openHints, completed, onFeedback, onComplete }: Props) {
   const isWord = exercise.kind === 'read-word';
   const text = isWord ? exercise.word : exercise.syllable;
   const word = isWord ? getWord(exercise.word) : undefined;
@@ -40,8 +40,8 @@ export function ReadItem({ exercise, readingCase, solo, openHints, completed, on
     onComplete({ hinted: helped || !alone, reading: { text, alone } });
   };
 
-  // Сама: читання ніхто не перевіряє, тому не пишемо його в журнал читання.
-  const soloDone = () => {
+  // Читання записано: у журнал воно потрапить, коли дорослий послухає запис і відмітить.
+  const recorded = () => {
     chime();
     onFeedback({ mood: 'cheer', text: pick(PRAISE) });
     onComplete({ hinted: helped });
@@ -73,10 +73,10 @@ export function ReadItem({ exercise, readingCase, solo, openHints, completed, on
           <div className="exercise__tools">
             {split ? <SayButton text={text} onPlay={listen} /> : <HintButton onClick={showHint} />}
           </div>
-          {solo ? <SoloRead text={text} onDone={soloDone} /> : <ReadingMarks onMark={mark} />}
+          <ReadAloud text={text} check={readingCheck} expected={`«${word ? word.split : glide(text)}»`} onRecorded={recorded} onMark={mark} />
         </>
       )}
-      {completed && word?.note && !solo && <p className="word-note">{word.note}</p>}
+      {completed && word?.note && readingCheck === 'adult' && <p className="word-note">{word.note}</p>}
     </div>
   );
 }

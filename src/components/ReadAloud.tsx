@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { saveReading } from '../audio/readings';
-import { canRecord, playBlob, startRecording } from '../audio/recordings';
-import { useProgress } from '../store/progressStore';
-import { SoloReadButton } from './ui';
+import { playBlob, startRecording } from '../audio/recordings';
+import type { ReadingCheck } from '../logic/readingCheck';
+import { ReadingMarks } from './ui';
 
 /** Найдовше читання - коротка фраза по складах. */
 const MAX_MS = 8000;
@@ -18,16 +18,28 @@ const now = () => performance.now();
 
 type Phase = 'idle' | 'starting' | 'recording' | 'hearing';
 
+interface Props {
+  text: string;
+  /** Хто перевіряє: запис, який дорослий послухає потім, чи дорослий поруч. */
+  check: ReadingCheck;
+  /** Дитина каже звук букви, а не читає. */
+  say?: boolean;
+  /** Дорослому, який відмічає одразу: що має прозвучати. */
+  expected?: ReactNode;
+  /** Читання записано й чекає на дорослого: відмітки ще немає. */
+  onRecorded: () => void;
+  /** Дорослий поруч відмітив, як вийшло. */
+  onMark: (alone: boolean) => void;
+}
+
 /**
- * Дитина грається сама і читає вголос. Якщо запис читання увімкнений (так за замовчуванням),
- * дитина записує себе, одразу чує свій голос до кінця, а дорослий послухає й відмітить потім.
+ * Дитина читає вголос (або каже звук букви - `say`), і це завжди хтось перевіряє.
+ * Із записом дитина записує себе, одразу чує свій голос до кінця, а дорослий послухає й відмітить потім.
  * Похвала й «як правильно» звучать лише після того, як дитина почула себе: інакше вони перебивають її голос.
- * Без мікрофона - звичайна зірочка «Прочитала!». Так само дитина каже звук букви (`say`).
+ * Без запису (вимкнений, мікрофон заборонений чи відмовив посеред місії) - кнопки дорослого, який сидить поруч.
  */
-export function SoloRead({ text, onDone, say = false }: { text: string; onDone: () => void; /** Дитина каже звук букви, а не читає. */ say?: boolean }) {
-  const { recordReading } = useProgress().settings;
+export function ReadAloud({ text, check, say = false, expected, onRecorded, onMark }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
-  const [failed, setFailed] = useState(false);
   const stopRef = useRef<(() => void) | undefined>(undefined);
   /** Коли дитина натиснула «Читаю!» і коли мікрофон справді почав писати. */
   const tappedAt = useRef(0);
@@ -47,7 +59,7 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     };
   }, []);
 
-  if (!recordReading || !canRecord() || failed) return <SoloReadButton onDone={onDone} say={say} />;
+  if (check === 'adult') return <ReadingMarks onMark={onMark} say={say} expected={expected} />;
 
   /** Зупиняє запис, щойно він триває щонайменше MIN_MS. */
   const stopWhenReady = () => {
@@ -73,8 +85,8 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     try {
       rec = await startRecording(MAX_MS);
     } catch {
-      // Мікрофон заборонений чи зайнятий - не заважаємо читати.
-      if (alive.current) setFailed(true);
+      // Мікрофон заборонений чи зайнятий: він тепер позначений недоступним, тож читання відмітить дорослий.
+      if (alive.current) setPhase('idle');
       return;
     }
     if (!alive.current) {
@@ -95,13 +107,13 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     // Запас на випадок, якщо телефон так і не скаже, що звук закінчився.
     await Promise.race([playBlob(blob), new Promise((r) => window.setTimeout(r, MAX_MS + 1000))]);
     await saved;
-    if (alive.current) onDone();
+    if (alive.current) onRecorded();
   };
 
   if (phase === 'hearing') {
     return (
-      <button type="button" className="solo-read solo-read--busy solo-read--hearing" disabled>
-        <span className="solo-read__star" aria-hidden="true">
+      <button type="button" className="read-aloud read-aloud--busy read-aloud--hearing" disabled>
+        <span className="read-aloud__star" aria-hidden="true">
           🔊
         </span>
         Слухаємо
@@ -114,18 +126,18 @@ export function SoloRead({ text, onDone, say = false }: { text: string; onDone: 
     return (
       <button
         type="button"
-        className={`solo-read solo-read--busy solo-read--recording${recording ? '' : ' solo-read--starting'}`}
+        className={`read-aloud read-aloud--busy read-aloud--recording${recording ? '' : ' read-aloud--starting'}`}
         onClick={requestStop}
       >
-        <span className="solo-read__dot" aria-hidden="true" />
+        <span className="read-aloud__dot" aria-hidden="true" />
         {recording ? 'Готово' : 'Слухаю…'}
       </button>
     );
   }
 
   return (
-    <button type="button" className="solo-read solo-read--mic" onClick={() => void start()}>
-      <span className="solo-read__star" aria-hidden="true">
+    <button type="button" className="read-aloud read-aloud--mic" onClick={() => void start()}>
+      <span className="read-aloud__star" aria-hidden="true">
         🎙️
       </span>
       {say ? 'Кажу!' : 'Читаю!'}

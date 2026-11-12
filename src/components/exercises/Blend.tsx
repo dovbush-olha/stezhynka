@@ -5,8 +5,8 @@ import type { BlendExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
 import { sayKey } from '../../logic/voice';
-import { SoloRead } from '../SoloRead';
-import { ReadingMarks, SayButton } from '../ui';
+import { ReadAloud } from '../ReadAloud';
+import { SayButton } from '../ui';
 import { caseText, glide } from '../text';
 import { Syllable } from './SyllableSplit';
 import type { ExerciseProps } from './types';
@@ -26,7 +26,7 @@ const AUTO_MS = 1600;
  * Букви не натискаються окремо: окремі дотики вчать читати «л… а…», а треба злито.
  * Просто торкнутися першої букви теж можна - тоді кулька поїде сама.
  */
-export function Blend({ exercise, readingCase, solo, completed, onFeedback, onComplete }: ExerciseProps<BlendExercise>) {
+export function Blend({ exercise, readingCase, readingCheck, completed, onFeedback, onComplete }: ExerciseProps<BlendExercise>) {
   const [a, b] = exercise.sounds;
   const syllable = toLower(a + b);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -50,7 +50,7 @@ export function Blend({ exercise, readingCase, solo, completed, onFeedback, onCo
     setPhase('done');
     chime();
     sound(sayKey(syllable));
-    onFeedback({ mood: 'happy', text: solo ? HINTS.soloRead : HINTS.blendDone });
+    onFeedback({ mood: 'happy', text: readingCheck === 'recording' ? HINTS.readAloud : HINTS.blendDone });
   };
 
   const begin = () => {
@@ -129,7 +129,7 @@ export function Blend({ exercise, readingCase, solo, completed, onFeedback, onCo
     onComplete({ hinted: !alone, reading: { text: syllable, alone } });
   };
 
-  const soloDone = () => {
+  const recorded = () => {
     chime();
     onFeedback({ mood: 'cheer', text: pick(PRAISE) });
     onComplete({ hinted: false });
@@ -175,7 +175,9 @@ export function Blend({ exercise, readingCase, solo, completed, onFeedback, onCo
         </div>
       )}
 
-      {done && !completed && (solo ? <SoloRead text={syllable} onDone={soloDone} /> : <ReadingMarks onMark={mark} />)}
+      {done && !completed && (
+        <ReadAloud text={syllable} check={readingCheck} expected={`«${glide(syllable)}»`} onRecorded={recorded} onMark={mark} />
+      )}
     </div>
   );
 }

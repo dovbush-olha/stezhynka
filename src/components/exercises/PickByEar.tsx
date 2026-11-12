@@ -5,15 +5,15 @@ import type { PickByEarExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { playRecording, useRecordingKeys } from '../../audio/recordings';
 import { sayKey } from '../../logic/voice';
-import { SayAloud, ColoredText, HintButton, ListenButton } from '../ui';
+import { ColoredText, HintButton, ListenButton } from '../ui';
 import { caseText } from '../text';
 import type { ExerciseProps } from './types';
 
 /**
- * «Послухай і вибери»: звучить голос дорослого (запис або вживу) - дитина торкає написане.
+ * «Послухай і вибери»: звучить записаний голос - дитина торкає написане.
  * Варіанти не озвучуються: інакше їх можна було б порівняти на слух, не дивлячись на букви.
  */
-export function PickByEar({ exercise, readingCase, solo, completed, onFeedback, onComplete }: ExerciseProps<PickByEarExercise>) {
+export function PickByEar({ exercise, readingCase, completed, onFeedback, onComplete }: ExerciseProps<PickByEarExercise>) {
   const { text, options } = exercise;
   const keys = useRecordingKeys();
   const recorded = keys.has(sayKey(text));
@@ -69,7 +69,6 @@ export function PickByEar({ exercise, readingCase, solo, completed, onFeedback, 
         )}
         <HintButton onClick={() => raise(false)} disabled={completed || level >= 2} />
       </div>
-      {!solo && !recorded && <SayAloud>«{text}»</SayAloud>}
 
       <div className={`ear-row ${long ? 'ear-row--long' : ''}`}>
         {options.map((o) => {

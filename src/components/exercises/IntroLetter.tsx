@@ -3,10 +3,9 @@ import { LETTERS, toLower } from '../../content/alphabet';
 import type { IntroLetterExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
-import { SayAloud } from '../ui';
 import type { ExerciseProps } from './types';
 
-export function IntroLetter({ exercise, solo, completed, onFeedback, onComplete }: ExerciseProps<IntroLetterExercise>) {
+export function IntroLetter({ exercise, completed, onFeedback, onComplete }: ExerciseProps<IntroLetterExercise>) {
   const info = LETTERS[exercise.letter];
   const [taps, setTaps] = useState(0);
   const recorded = hasRecording(soundKey(info.id));
@@ -48,8 +47,6 @@ export function IntroLetter({ exercise, solo, completed, onFeedback, onComplete 
           </span>
         )}
       </button>
-
-      {!solo && !recorded && <SayAloud>{info.sound}</SayAloud>}
     </div>
   );
 }

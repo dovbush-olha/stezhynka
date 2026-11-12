@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { LetterId } from '../content/alphabet';
 import { COURSE_MISSIONS } from '../content/course';
 import type { BuildWordExercise, Exercise, ExerciseKind, FindLetterExercise, Mission } from '../content/types';
-import { buildPracticeMission, makeRng } from './generate';
+import { buildPracticeMission, makeRng, warmUp } from './generate';
 import { exerciseResult, finishMission, missionExercises, missionSummary, type VoiceChecks } from './missionRun';
 import { applyExerciseResult, createInitialState, unlockLetter, updateSettings, type ExerciseResult, type ProgressState } from './progress';
 import { practisedItems } from './review';
@@ -23,9 +23,15 @@ const warmUpPart = (run: readonly Exercise[], m: Mission) => run.slice(0, -m.exe
 const withoutOrder = (exercises: readonly Exercise[]) =>
   exercises.map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, Array.isArray(v) ? [...v].sort() : v])));
 
+/** Види вправ, які проходження замінює на посильні для дитини; решта доходить до неї як у контенті. */
+const ADAPTED: ExerciseKind[] = ['letter-by-sound', 'read-word', 'build-word', 'pick-by-ear'];
+/** Вправи місії, яких перетворення не зачіпає, - і ті, що стоять на їхніх місцях у проходженні. */
+const untouched = (m: Mission) => m.exercises.filter((e) => !ADAPTED.includes(e.kind));
+const atUntouched = (own: readonly Exercise[], m: Mission) => own.filter((_, i) => !ADAPTED.includes(m.exercises[i].kind));
+
 /** Стан після всіх місій з підказками всюди: розминці є що повторювати. */
-function struggled(mode: 'solo' | 'together'): ProgressState {
-  let s = updateSettings(createInitialState(TODAY), { mode });
+function struggled(): ProgressState {
+  let s = createInitialState(TODAY);
   for (const l of ['М', 'С', 'Н', 'К'] as LetterId[]) s = unlockLetter(s, l, TODAY);
   for (const m of COURSE_MISSIONS) {
     for (const ex of m.exercises) s = applyExerciseResult(s, { hinted: true, items: practisedItems(ex, true) }, TODAY);
@@ -35,18 +41,19 @@ function struggled(mode: 'solo' | 'together'): ProgressState {
 
 describe('проходження місії: складання вправ', () => {
   it('однаковий seed дає ті самі вправи', () => {
-    const s = struggled('together');
+    const s = struggled();
     const run = (seed: string) => missionExercises(s, mission('l-2'), TODAY, seed, NO_VOICE);
     expect(run('a')).toEqual(run('a'));
   });
 
   it('різний seed переставляє варіанти відповіді, не змінюючи самих вправ місії', () => {
-    const s = updateSettings(createInitialState(TODAY), { mode: 'together' });
+    const s = createInitialState(TODAY);
     const m = COURSE_MISSIONS.find((x) => x.exercises.some((e) => e.kind === 'find-letter' && e.options.length >= 3))!;
     const orders = new Set<string>();
     for (const seed of ['a', 'b', 'c', 'd', 'e', 'f']) {
       const own = ownPart(missionExercises(s, m, TODAY, seed, NO_VOICE), m);
-      expect(withoutOrder(own)).toEqual(withoutOrder(m.exercises));
+      expect(own).toHaveLength(m.exercises.length);
+      expect(withoutOrder(atUntouched(own, m))).toEqual(withoutOrder(untouched(m)));
       const found = own.filter((e): e is FindLetterExercise => e.kind === 'find-letter');
       orders.add(found.map((e) => e.options.join('')).join('|'));
     }
@@ -54,34 +61,34 @@ describe('проходження місії: складання вправ', () 
   });
 
   it('перед місією йде розминка, а перед «Повторенням у лісі» - ні', () => {
-    const s = struggled('together');
+    const s = struggled();
     const m = mission('l-2');
     const run = missionExercises(s, m, TODAY, 'w', NO_VOICE);
     expect(run.length).toBeGreaterThan(m.exercises.length);
     // Розминка стоїть на початку: вправи самої місії - наприкінці, у своєму порядку.
-    expect(withoutOrder(ownPart(run, m))).toEqual(withoutOrder(m.exercises));
-    expect(withoutOrder(run.slice(0, m.exercises.length))).not.toEqual(withoutOrder(m.exercises));
+    expect(untouched(m).length).toBeGreaterThan(0);
+    expect(withoutOrder(atUntouched(ownPart(run, m), m))).toEqual(withoutOrder(untouched(m)));
+    expect(withoutOrder(atUntouched(run.slice(0, m.exercises.length), m))).not.toEqual(withoutOrder(untouched(m)));
     const practice = buildPracticeMission(s, TODAY, makeRng('p'));
     expect(missionExercises(s, practice, TODAY, 'w', NO_VOICE)).toHaveLength(practice.exercises.length);
   });
 
-  it('сама без жодних записів дитина не отримує вправ на слух - і в розминці теж', () => {
+  it('без жодних записів дитина не отримує вправ на слух - і в розминці теж', () => {
     const byEar = (exercises: readonly Exercise[]) => exercises.filter((e) => e.kind === 'letter-by-sound' || e.kind === 'pick-by-ear');
     const seeds = ['1', '2', '3', '4', '5'];
     const all = (s: ProgressState) =>
       [...COURSE_MISSIONS, buildPracticeMission(s, TODAY, makeRng('p'))].flatMap((m) =>
         seeds.flatMap((seed) => missionExercises(s, m, TODAY, `${m.id}-${seed}`, NO_VOICE)),
       );
-    // З дорослим поруч такі вправи є - і в місіях, і в розминці, тож перевірка не порожня.
-    const together = struggled('together');
-    const withAdult = COURSE_MISSIONS.map((m) => ({ m, run: missionExercises(together, m, TODAY, m.id, NO_VOICE) }));
-    expect(byEar(withAdult.flatMap((r) => ownPart(r.run, r.m))).length).toBeGreaterThan(0);
-    expect(byEar(withAdult.flatMap((r) => warmUpPart(r.run, r.m))).length).toBeGreaterThan(0);
-    expect(byEar(all(struggled('solo')))).toEqual([]);
+    // У контенті такі вправи є - і в місіях, і в розминці, тож перевірка не порожня.
+    const s = struggled();
+    expect(byEar(COURSE_MISSIONS.flatMap((m) => m.exercises)).length).toBeGreaterThan(0);
+    expect(byEar(COURSE_MISSIONS.flatMap((m) => warmUp(s, m, TODAY, makeRng(m.id)))).length).toBeGreaterThan(0);
+    expect(byEar(all(s))).toEqual([]);
   });
 
-  it('сама дитина шукає на слух лише те, що записано: звуки букв і прочитані склади перевіряються окремо', () => {
-    const s = struggled('solo');
+  it('дитина шукає на слух лише те, що записано: звуки букв і прочитані склади перевіряються окремо', () => {
+    const s = struggled();
     const count = (voice: VoiceChecks, kind: ExerciseKind) =>
       COURSE_MISSIONS.flatMap((m) => missionExercises(s, m, TODAY, m.id, voice)).filter((e) => e.kind === kind).length;
     expect(count(SOUNDS_ONLY, 'letter-by-sound')).toBeGreaterThan(0);
@@ -90,17 +97,25 @@ describe('проходження місії: складання вправ', () 
     expect(count(SAY_ONLY, 'letter-by-sound')).toBe(0);
   });
 
-  it('із записом звуку букви «знайди букву» стає «послухай і знайди» в обох режимах - і в розминці теж', () => {
-    for (const mode of ['solo', 'together'] as const) {
-      const s = struggled(mode);
-      const run = (voice: VoiceChecks) => COURSE_MISSIONS.map((m) => ({ m, exercises: missionExercises(s, m, TODAY, m.id, voice) }));
-      const silent = run(NO_VOICE);
-      // Без записів «знайди букву» є і в місіях, і в розминці, тож перевірка не порожня.
-      expect(kinds(silent.flatMap((r) => ownPart(r.exercises, r.m))), mode).toContain('find-letter');
-      expect(kinds(silent.flatMap((r) => warmUpPart(r.exercises, r.m))), mode).toContain('find-letter');
-      const voiced = kinds(run(SOUNDS_ONLY).flatMap((r) => r.exercises));
-      expect(voiced, mode).not.toContain('find-letter');
-      expect(voiced, mode).toContain('letter-by-sound');
+  it('із записом звуку букви «знайди букву» стає «послухай і знайди» - і в розминці теж', () => {
+    const s = struggled();
+    const run = (voice: VoiceChecks) => COURSE_MISSIONS.map((m) => ({ m, exercises: missionExercises(s, m, TODAY, m.id, voice) }));
+    const silent = run(NO_VOICE);
+    // Без записів «знайди букву» є і в місіях, і в розминці, тож перевірка не порожня.
+    expect(kinds(silent.flatMap((r) => ownPart(r.exercises, r.m)))).toContain('find-letter');
+    expect(kinds(silent.flatMap((r) => warmUpPart(r.exercises, r.m)))).toContain('find-letter');
+    const voiced = kinds(run(SOUNDS_ONLY).flatMap((r) => r.exercises));
+    expect(voiced).not.toContain('find-letter');
+    expect(voiced).toContain('letter-by-sound');
+  });
+
+  it('перетворення вправ не залежить від запису читання: слово завжди перевіряється картинкою', () => {
+    const m = COURSE_MISSIONS.find((x) => x.exercises.some((e) => e.kind === 'read-word' && e.word === 'сом'))!;
+    for (const recordReading of [true, false]) {
+      const s = updateSettings(struggled(), { recordReading });
+      const own = ownPart(missionExercises(s, m, TODAY, 'a', NO_VOICE), m);
+      expect(own.some((e) => e.kind === 'pick-picture' && e.word === 'сом'), String(recordReading)).toBe(true);
+      expect(own.some((e) => e.kind === 'read-word' && e.word === 'сом'), String(recordReading)).toBe(false);
     }
   });
 });

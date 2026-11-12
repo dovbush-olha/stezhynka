@@ -171,6 +171,53 @@ export function canRecord(): boolean {
   return typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== 'undefined';
 }
 
+/**
+ * Мікрофон відмовив: доступ заборонений, він зайнятий або його немає.
+ * Тримаємо це до наступної вдалої спроби, щоб дитина не натискала «Читаю!» знову й знову даремно.
+ */
+let micBlocked = false;
+const micListeners = new Set<() => void>();
+
+function setMicBlocked(blocked: boolean) {
+  if (micBlocked === blocked) return;
+  micBlocked = blocked;
+  micListeners.forEach((l) => l());
+}
+
+/** Чи вийде записати голос просто зараз: пристрій уміє записувати, і мікрофон не відмовив. */
+export function micAvailable(): boolean {
+  return canRecord() && !micBlocked;
+}
+
+function subscribeMic(l: () => void) {
+  micListeners.add(l);
+  return () => {
+    micListeners.delete(l);
+  };
+}
+
+export function useMicAvailable(): boolean {
+  return useSyncExternalStore(subscribeMic, micAvailable, micAvailable);
+}
+
+/**
+ * Дізнаємося про заборонений мікрофон заздалегідь, не питаючи дозволу: тоді вправа одразу
+ * показує відмітки дорослого. Де браузер цього не каже, дізнаємося з першої спроби запису.
+ */
+export async function watchMicrophonePermission() {
+  try {
+    const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+    const sync = () => {
+      if (status.state === 'denied') setMicBlocked(true);
+      else if (status.state === 'granted') setMicBlocked(false);
+    };
+    sync();
+    status.onchange = sync;
+  } catch {
+    // Браузер не вміє відповісти про мікрофон - покаже перша спроба запису.
+  }
+}
+
 /** Записує звук до виклику stop() або максимум maxMs. `done` - готовий запис. */
 export async function startRecording(maxMs = 2500): Promise<{ stop: () => void; done: Promise<Blob> }> {
   // Тиша перед записом: голос із динаміка чи «бульбашка» дотику інакше потрапляють у запис.
@@ -200,10 +247,12 @@ export async function startRecording(maxMs = 2500): Promise<{ stop: () => void; 
     };
     rec.start();
     const timer = window.setTimeout(stop, maxMs);
+    setMicBlocked(false);
     return { stop, done };
   } catch (e) {
     stream?.getTracks().forEach((t) => t.stop());
     setMic(false);
+    setMicBlocked(true);
     throw e;
   }
 }
@@ -218,8 +267,10 @@ export async function requestMicrophone(): Promise<boolean> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((t) => t.stop());
+    setMicBlocked(false);
     return true;
   } catch {
+    setMicBlocked(true);
     return false;
   }
 }

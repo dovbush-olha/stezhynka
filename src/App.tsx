@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Mission } from './content/types';
 import { suspendAudio, tap } from './audio/audio';
 import { loadReadings } from './audio/readings';
-import { loadRecordingKeys } from './audio/recordings';
+import { loadRecordingKeys, watchMicrophonePermission } from './audio/recordings';
 import { ForestBackground } from './components/ForestBackground';
 import { buildPracticeMission, makeRng } from './logic/generate';
 import { todayISO } from './logic/progress';
@@ -48,6 +48,7 @@ export default function App() {
   useEffect(() => {
     void loadRecordingKeys();
     void loadReadings();
+    void watchMicrophonePermission();
   }, []);
 
   useEffect(() => {
