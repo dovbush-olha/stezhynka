@@ -73,7 +73,14 @@ export function ReadItem({ exercise, readingCase, readingCheck, openHints, compl
           <div className="exercise__tools">
             {split ? <SayButton text={text} onPlay={listen} /> : <HintButton onClick={showHint} />}
           </div>
-          <ReadAloud text={text} check={readingCheck} expected={`«${word ? word.split : glide(text)}»`} onRecorded={recorded} onMark={mark} />
+          {/* Підказка дорослому повторює поділ на склади, тож з'являється разом із ним: дитина бачить її теж. */}
+          <ReadAloud
+            text={text}
+            check={readingCheck}
+            expected={split ? `«${word ? word.split : glide(text)}»` : undefined}
+            onRecorded={recorded}
+            onMark={mark}
+          />
         </>
       )}
       {completed && word?.note && readingCheck === 'adult' && <p className="word-note">{word.note}</p>}
