@@ -21,7 +21,7 @@ import {
   updateSettings,
   type ProgressState,
 } from './progress';
-import { readingCheck } from './readingCheck';
+import { isLastingMicFailure, readingCheck } from './readingCheck';
 import { newestFirst, overflow } from './readingQueue';
 import { addDays, nextReview } from './srs';
 
@@ -422,6 +422,14 @@ describe('хто перевіряє читання вголос', () => {
   it('мікрофон заборонений чи недоступний - відмічає дорослий поруч, хоч запис і увімкнений', () => {
     expect(readingCheck({ recordReading: true }, false)).toBe('adult');
     expect(readingCheck({ recordReading: false }, false)).toBe('adult');
+  });
+
+  it('заборонений чи відсутній мікрофон недоступний надовго, а зайнятий - лише цього разу', () => {
+    expect(isLastingMicFailure(new DOMException('', 'NotAllowedError'))).toBe(true);
+    expect(isLastingMicFailure(new DOMException('', 'NotFoundError'))).toBe(true);
+    expect(isLastingMicFailure(new TypeError('getUserMedia is undefined'))).toBe(true);
+    expect(isLastingMicFailure(new DOMException('', 'NotReadableError'))).toBe(false);
+    expect(isLastingMicFailure(new DOMException('', 'AbortError'))).toBe(false);
   });
 
   it('нове збереження записує читання, а колишнє «З дорослим» - ні', () => {

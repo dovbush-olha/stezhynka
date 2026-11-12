@@ -36,10 +36,18 @@ interface Props {
  * Дитина читає вголос (або каже звук букви - `say`), і це завжди хтось перевіряє.
  * Із записом дитина записує себе, одразу чує свій голос до кінця, а дорослий послухає й відмітить потім.
  * Похвала й «як правильно» звучать лише після того, як дитина почула себе: інакше вони перебивають її голос.
- * Без запису (вимкнений, мікрофон заборонений чи відмовив посеред місії) - кнопки дорослого, який сидить поруч.
+ * Без запису (вимкнений, мікрофон заборонений) - кнопки дорослого, який сидить поруч.
+ * Ті самі кнопки з'являються, якщо запис у цій вправі не вдався: мікрофон відмовив або запис не зберігся.
+ * Вправа завершується рівно один раз: або записом, або відміткою.
  */
 export function ReadAloud({ text, check, say = false, expected, onRecorded, onMark }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
+  /** Запис у цій вправі не вдався - її відмічає дорослий. */
+  const [failed, setFailed] = useState(false);
+  const adult = check === 'adult' || failed;
+  /** Свіже значення для запису, який уже триває: він не має завершити вправу, яку відмічає дорослий. */
+  const adultNow = useRef(adult);
+  const settled = useRef(false);
   const stopRef = useRef<(() => void) | undefined>(undefined);
   /** Коли дитина натиснула «Читаю!» і коли мікрофон справді почав писати. */
   const tappedAt = useRef(0);
@@ -59,7 +67,22 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     };
   }, []);
 
-  if (check === 'adult') return <ReadingMarks onMark={onMark} say={say} expected={expected} />;
+  useEffect(() => {
+    adultNow.current = adult;
+    // Перевірка перейшла до дорослого посеред запису: звільняємо мікрофон, запис не потрібен.
+    if (!adult) return;
+    window.clearTimeout(stopTimer.current);
+    stopRef.current?.();
+  }, [adult]);
+
+  /** Завершує вправу - лише вперше. */
+  const settle = (finish: () => void) => {
+    if (settled.current) return;
+    settled.current = true;
+    finish();
+  };
+
+  if (adult) return <ReadingMarks onMark={(alone) => settle(() => onMark(alone))} say={say} expected={expected} />;
 
   /** Зупиняє запис, щойно він триває щонайменше MIN_MS. */
   const stopWhenReady = () => {
@@ -85,8 +108,8 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     try {
       rec = await startRecording(MAX_MS);
     } catch {
-      // Мікрофон заборонений чи зайнятий: він тепер позначений недоступним, тож читання відмітить дорослий.
-      if (alive.current) setPhase('idle');
+      // Мікрофон заборонений чи зайнятий - читання в цій вправі відмітить дорослий.
+      if (alive.current) setFailed(true);
       return;
     }
     if (!alive.current) {
@@ -99,21 +122,25 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     stopWhenReady();
     const blob = await rec.done;
     stopRef.current = undefined;
-    if (!alive.current) return;
+    if (!alive.current || adultNow.current) return;
     setPhase('hearing');
-    const saved = saveReading(text, blob).catch(() => {
-      // Сховище недоступне - дитина однаково себе почує.
-    });
+    // Сховище може бути недоступне - дитина однаково себе почує, а читання тоді відмітить дорослий.
+    const saved = saveReading(text, blob).then(
+      () => true,
+      () => false,
+    );
     // Запас на випадок, якщо телефон так і не скаже, що звук закінчився.
     await Promise.race([playBlob(blob), new Promise((r) => window.setTimeout(r, MAX_MS + 1000))]);
-    await saved;
-    if (alive.current) onRecorded();
+    const kept = await saved;
+    if (!alive.current || adultNow.current) return;
+    if (kept) settle(onRecorded);
+    else setFailed(true);
   };
 
   if (phase === 'hearing') {
     return (
       <button type="button" className="read-aloud read-aloud--busy read-aloud--hearing" disabled>
-        <span className="read-aloud__star" aria-hidden="true">
+        <span className="read-aloud__icon" aria-hidden="true">
           🔊
         </span>
         Слухаємо
@@ -137,7 +164,7 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
 
   return (
     <button type="button" className="read-aloud read-aloud--mic" onClick={() => void start()}>
-      <span className="read-aloud__star" aria-hidden="true">
+      <span className="read-aloud__icon" aria-hidden="true">
         🎙️
       </span>
       {say ? 'Кажу!' : 'Читаю!'}

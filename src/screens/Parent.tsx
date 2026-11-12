@@ -650,7 +650,7 @@ function RecordReadingSwitch() {
             відмічаєте одразу: «{t('{Прочитала сама|Прочитав сам}')}» / «Прочитали разом». Записи залишаються лише на цьому пристрої.
           </small>
         </span>
-        <input type="checkbox" checked={recordReading && available} disabled={!supported} onChange={(e) => void toggle(e.target.checked)} />
+        <input type="checkbox" checked={recordReading && supported} disabled={!supported} onChange={(e) => void toggle(e.target.checked)} />
       </label>
       {!supported && (
         <p className="warning">
@@ -660,8 +660,8 @@ function RecordReadingSwitch() {
       )}
       {supported && recordReading && !available && !error && (
         <p className="warning">
-          Мікрофон заборонений або недоступний, тож читання відмічаєте ви, одразу. Щоб записувати, дозвольте доступ до мікрофона в браузері й
-          увімкніть запис знову.
+          Мікрофон заборонений або недоступний, тож поки що читання відмічаєте ви, одразу. Щоб записувати, дозвольте доступ до мікрофона в
+          браузері й відкрийте застосунок знову.
         </p>
       )}
       {error && <p className="warning">{error}</p>}

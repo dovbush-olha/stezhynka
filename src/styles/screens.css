@@ -1111,15 +1111,6 @@
     height: 50px;
   }
 
-  .listen-badge {
-    width: 72px;
-    height: 72px;
-  }
-
-  .listen-badge__ear {
-    font-size: 2.3rem;
-  }
-
   .choice-tile,
   .slide__tile {
     width: clamp(96px, 18vh, 150px);

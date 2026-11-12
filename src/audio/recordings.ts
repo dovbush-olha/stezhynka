@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { BUILTIN_VOICE } from '../content/builtinVoice';
+import { isLastingMicFailure } from '../logic/readingCheck';
 import { setMicOpen } from './audio';
 import { tx } from './db';
 
@@ -172,8 +173,9 @@ export function canRecord(): boolean {
 }
 
 /**
- * Мікрофон відмовив: доступ заборонений, він зайнятий або його немає.
+ * Мікрофон відмовив надовго: доступ заборонений або мікрофона немає.
  * Тримаємо це до наступної вдалої спроби, щоб дитина не натискала «Читаю!» знову й знову даремно.
+ * Тимчасовий збій (мікрофон зайнятий) сюди не потрапляє: його переживає лише та вправа, де він стався.
  */
 let micBlocked = false;
 const micListeners = new Set<() => void>();
@@ -207,10 +209,7 @@ export function useMicAvailable(): boolean {
 export async function watchMicrophonePermission() {
   try {
     const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-    const sync = () => {
-      if (status.state === 'denied') setMicBlocked(true);
-      else if (status.state === 'granted') setMicBlocked(false);
-    };
+    const sync = () => setMicBlocked(status.state === 'denied');
     sync();
     status.onchange = sync;
   } catch {
@@ -252,7 +251,7 @@ export async function startRecording(maxMs = 2500): Promise<{ stop: () => void; 
   } catch (e) {
     stream?.getTracks().forEach((t) => t.stop());
     setMic(false);
-    setMicBlocked(true);
+    if (isLastingMicFailure(e)) setMicBlocked(true);
     throw e;
   }
 }
@@ -269,8 +268,8 @@ export async function requestMicrophone(): Promise<boolean> {
     stream.getTracks().forEach((t) => t.stop());
     setMicBlocked(false);
     return true;
-  } catch {
-    setMicBlocked(true);
+  } catch (e) {
+    if (isLastingMicFailure(e)) setMicBlocked(true);
     return false;
   }
 }

@@ -233,7 +233,7 @@
   box-shadow: 0 1px 0 var(--leaf-dark);
 }
 
-.read-aloud__star {
+.read-aloud__icon {
   font-size: 1.8rem;
   animation: star-wobble 2.4s ease-in-out infinite;
 }
@@ -255,7 +255,7 @@
   cursor: default;
 }
 
-.read-aloud--hearing .read-aloud__star {
+.read-aloud--hearing .read-aloud__icon {
   animation: none;
 }
 

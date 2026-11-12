@@ -11,6 +11,7 @@ import type { ExerciseProps } from './types';
 
 /**
  * «Послухай і вибери»: звучить записаний голос - дитина торкає написане.
+ * Без запису цієї вправи не буває: проходження замінює її на читання.
  * Варіанти не озвучуються: інакше їх можна було б порівняти на слух, не дивлячись на букви.
  */
 export function PickByEar({ exercise, readingCase, completed, onFeedback, onComplete }: ExerciseProps<PickByEarExercise>) {
@@ -59,14 +60,7 @@ export function PickByEar({ exercise, readingCase, completed, onFeedback, onComp
       {/* Підказка - поруч із кнопкою звуку, а не окремим рядком: з трьома словами стовпчиком
           інакше кнопка «Далі» на телефоні опиняється нижче екрана. */}
       <div className="ear-head">
-        {recorded ? (
-          <ListenButton onPlay={play} big />
-        ) : (
-          <div className="listen-badge" aria-hidden="true">
-            <span className="listen-badge__ear">👂</span>
-            <span className="listen-badge__waves" />
-          </div>
-        )}
+        <ListenButton onPlay={play} big />
         <HintButton onClick={() => raise(false)} disabled={completed || level >= 2} />
       </div>
 

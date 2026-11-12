@@ -63,16 +63,8 @@ export function ChooseLetter({ exercise, completed, onFeedback, onComplete }: Pr
           <span className="letter-glyph letter-glyph--sample">{show(target)}</span>
         </div>
       ) : (
-        <>
-          {recorded ? (
-            <ListenButton onPlay={play} big />
-          ) : (
-            <div className="listen-badge" aria-hidden="true">
-              <span className="listen-badge__ear">👂</span>
-              <span className="listen-badge__waves" />
-            </div>
-          )}
-        </>
+        // Без запису звуку цієї вправи не буває: проходження замінює її на пошук за зразком.
+        <ListenButton onPlay={play} big />
       )}
 
       <div className={`choice-row choice-row--${options.length}`}>
