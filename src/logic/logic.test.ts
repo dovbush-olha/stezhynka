@@ -21,7 +21,7 @@ import {
   updateSettings,
   type ProgressState,
 } from './progress';
-import { isLastingMicFailure, readingCheck } from './readingCheck';
+import { isLastingMicFailure, readingCheck, readingCheckInExercise } from './readingCheck';
 import { newestFirst, overflow } from './readingQueue';
 import { addDays, nextReview } from './srs';
 
@@ -430,6 +430,17 @@ describe('хто перевіряє читання вголос', () => {
     expect(isLastingMicFailure(new TypeError('getUserMedia is undefined'))).toBe(true);
     expect(isLastingMicFailure(new DOMException('', 'NotReadableError'))).toBe(false);
     expect(isLastingMicFailure(new DOMException('', 'AbortError'))).toBe(false);
+  });
+
+  it('у самій вправі: невдалий запис відмічає дорослий, а вже зроблений запис лишається перевіркою, хоч би мікрофон після цього й відмовив', () => {
+    const fresh = { failed: false, captured: false };
+    expect(readingCheckInExercise('recording', fresh)).toBe('recording');
+    expect(readingCheckInExercise('adult', fresh)).toBe('adult');
+    expect(readingCheckInExercise('recording', { failed: true, captured: false })).toBe('adult');
+    // Запис уже є і збережеться: якби тут відмітив ще й дорослий, читання мало б дві відмітки.
+    expect(readingCheckInExercise('adult', { failed: false, captured: true })).toBe('recording');
+    // Запис не зберігся - відмічає дорослий, хоч запис і був зроблений.
+    expect(readingCheckInExercise('recording', { failed: true, captured: true })).toBe('adult');
   });
 
   it('нове збереження записує читання, а колишнє «З дорослим» - ні', () => {

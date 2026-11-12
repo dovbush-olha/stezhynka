@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { saveReading } from '../audio/readings';
 import { playBlob, startRecording } from '../audio/recordings';
-import type { ReadingCheck } from '../logic/readingCheck';
+import { readingCheckInExercise, type ReadingCheck } from '../logic/readingCheck';
 import { ReadingMarks } from './ui';
 
 /** Найдовше читання - коротка фраза по складах. */
@@ -44,7 +44,7 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   const [phase, setPhase] = useState<Phase>('idle');
   /** Запис у цій вправі не вдався - її відмічає дорослий. */
   const [failed, setFailed] = useState(false);
-  const adult = check === 'adult' || failed;
+  const adult = readingCheckInExercise(check, { failed, captured: phase === 'hearing' }) === 'adult';
   /** Свіже значення для запису, який уже триває: він не має завершити вправу, яку відмічає дорослий. */
   const adultNow = useRef(adult);
   const settled = useRef(false);
@@ -112,8 +112,10 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
       if (alive.current) setFailed(true);
       return;
     }
-    if (!alive.current) {
+    if (!alive.current || adultNow.current) {
+      // Поки мікрофон вмикався, з вправи пішли або перевірка перейшла до дорослого: запис не потрібен.
       rec.stop();
+      if (alive.current) setFailed(true);
       return;
     }
     stopRef.current = rec.stop;
@@ -122,7 +124,13 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     stopWhenReady();
     const blob = await rec.done;
     stopRef.current = undefined;
-    if (!alive.current || adultNow.current) return;
+    if (!alive.current) return;
+    if (adultNow.current) {
+      // Дорослий перебрав перевірку посеред запису - і вже до кінця вправи, навіть якщо мікрофон повернеться:
+      // інакше лишилася б кнопка «Готово» без запису, яка нічого не робить.
+      setFailed(true);
+      return;
+    }
     setPhase('hearing');
     // Сховище може бути недоступне - дитина однаково себе почує, а читання тоді відмітить дорослий.
     const saved = saveReading(text, blob).then(
@@ -132,7 +140,8 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     // Запас на випадок, якщо телефон так і не скаже, що звук закінчився.
     await Promise.race([playBlob(blob), new Promise((r) => window.setTimeout(r, MAX_MS + 1000))]);
     const kept = await saved;
-    if (!alive.current || adultNow.current) return;
+    if (!alive.current) return;
+    // Запис уже зберігся й чекає на дорослого - вправу завершує він, хоч би мікрофон тим часом і відмовив.
     if (kept) settle(onRecorded);
     else setFailed(true);
   };
