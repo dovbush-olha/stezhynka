@@ -50,8 +50,9 @@ export function recommend(state: ProgressState, missions = COURSE_MISSIONS): Rec
   // Повернута буква починається наново: підказки в останній місії попередньої букви - давні.
   // Про повернення свідчить будь-яка місія етапу в черзі «ще раз»: перші могли бути пропущені й записів не мати.
   const stage = stageOfMission(next.id);
-  const restartsLetter =
-    stage !== stageOfMission(prev?.id ?? '') && Boolean(stage && stageMissions(stage).some((m) => state.redo.includes(m.id)));
+  const restartsLetter = Boolean(
+    prev && stage && stage !== stageOfMission(prev.id) && stageMissions(stage).some((m) => state.redo.includes(m.id)),
+  );
   const prevRecord = prev && missionState(state, prev.id) === 'done' && !restartsLetter ? state.missions[prev.id] : undefined;
   if (prev && prevRecord && prevRecord.lastHintRate > STRUGGLE_HINT_RATE && prevRecord.completions < MAX_SUGGESTED_REPEATS) {
     return { kind: 'mission', mission: prev, reason: 'repeat' };
