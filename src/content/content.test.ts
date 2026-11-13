@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, isVowel, lettersOf } from './alphabet';
+import { LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, lettersOf } from './alphabet';
 import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN } from './phrases';
 import { validateMission } from './validate';
-import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, stageMissions } from './course';
+import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
 import type { Exercise, LetterId } from './types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from './words';
 
@@ -198,7 +198,7 @@ describe('план місій', () => {
 
   it('у кожному етапі приголосної є день знайомства - перший день етапу, з місією, що вчить букву', () => {
     for (const s of COURSE_STAGES) {
-      if (s.letters.every(isVowel)) {
+      if (isVowelStage(s)) {
         expect(s.introDay, s.id).toBeUndefined();
         continue;
       }

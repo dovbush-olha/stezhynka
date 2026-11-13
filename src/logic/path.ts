@@ -4,7 +4,16 @@
  */
 import { BASE_LETTERS, type LetterId } from '../content/alphabet';
 import type { Stage } from '../content/types';
-import { COURSE_STAGES, introMissions, isVowelStage, previousStage, stageMissions, stageOfLetter, stageOfMission } from '../content/course';
+import {
+  COURSE_STAGES,
+  findStage,
+  introMissions,
+  isVowelStage,
+  previousStage,
+  stageMissions,
+  stageOfLetter,
+  stageOfMission,
+} from '../content/course';
 import {
   autoUnlockLetters,
   isMissionDone,
@@ -113,11 +122,9 @@ export function applyKnownLetters(
   return s;
 }
 
-/** Етап і всі наступні: «Пройти букву ще раз» повертає в чергу і їх. */
-function stageAndLater(stageId: string): { stage: Stage; later: Stage[] } | undefined {
-  const index = COURSE_STAGES.findIndex((s) => s.id === stageId);
-  if (index === -1) return undefined;
-  return { stage: COURSE_STAGES[index], later: COURSE_STAGES.slice(index + 1) };
+/** Етапи після цього: «Пройти букву ще раз» повертає в чергу і їх. */
+function laterStages(stage: Stage): Stage[] {
+  return COURSE_STAGES.slice(COURSE_STAGES.indexOf(stage) + 1);
 }
 
 /** Букви наступних етапів, які повернення сховає: відкриті, крім базових і впевнено знайомих. */
@@ -147,9 +154,10 @@ function returningMissions(state: ProgressState, stage: Stage, later: readonly S
 }
 
 export function redoPreview(state: ProgressState, stageId: string): RedoPreview | undefined {
-  const found = stageAndLater(stageId);
-  if (!found) return undefined;
-  return { missions: returningMissions(state, found.stage, found.later).length, hides: lettersToHide(state, found.later) };
+  const stage = findStage(stageId);
+  if (!stage) return undefined;
+  const later = laterStages(stage);
+  return { missions: returningMissions(state, stage, later).length, hides: lettersToHide(state, later) };
 }
 
 /**
@@ -158,9 +166,9 @@ export function redoPreview(state: ProgressState, stageId: string): RedoPreview 
  * Записи про проходження, наліпки, зірочки, статистика й журнал читання не змінюються.
  */
 export function redoStage(state: ProgressState, stageId: string, today = todayISO()): ProgressState {
-  const found = stageAndLater(stageId);
-  if (!found) return state;
-  const { stage, later } = found;
+  const stage = findStage(stageId);
+  if (!stage) return state;
+  const later = laterStages(stage);
   const ownIds = new Set(stageMissions(stage).map((m) => m.id));
   // Пропущені місії етапу просто перестають бути пропущеними; у `redo` - лише ті, що мають запис про проходження.
   const returning = returningMissions(state, stage, later).filter((id) => state.missions[id]?.completions);
