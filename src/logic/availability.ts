@@ -43,10 +43,10 @@ export function missingLetters(state: ProgressState, mission: Mission): LetterId
 
 export function missionAvailability(state: ProgressState, mission: Mission, missions = COURSE_MISSIONS): MissionAvailability {
   const own = missionState(state, mission.id);
-  if (own === 'done') return own;
+  if (own === 'done') return 'done';
   const index = missions.findIndex((m) => m.id === mission.id);
   if (own === 'skipped') {
-    if (!missingLetters(state, mission).length) return own;
+    if (!missingLetters(state, mission).length) return 'skipped';
     // Букву пропущеної місії сховано: поверненням - відкриється сама, коли дитина дійде; дорослим - лише він її відкриє.
     const next = missions.findIndex((m) => !isMissionDone(state, m.id));
     return next !== -1 && next < index ? 'locked' : 'needs-letters';
