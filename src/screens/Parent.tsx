@@ -38,6 +38,7 @@ import {
 import {
   LETTER_STATUSES,
   LETTER_STATUS_LABEL,
+  isMissionEarned,
   lockLetter,
   logLetter,
   logReading,
@@ -619,7 +620,8 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
   const progress = useProgress();
-  const done = COURSE_MISSIONS.filter((m) => missionState(progress, m.id) === 'done').length;
+  // Пройдене дитиною: «Пройти букву ще раз» повертає місії в чергу, але статистику не зменшує.
+  const done = COURSE_MISSIONS.filter((m) => isMissionEarned(progress, m.id)).length;
   const skipped = COURSE_MISSIONS.filter((m) => missionState(progress, m.id) === 'skipped').length;
   const letterStats = progress.unlocked.map((l) => progress.letters[l]).filter(Boolean);
   const seen = letterStats.reduce((a, l) => a + (l?.seen ?? 0), 0);
