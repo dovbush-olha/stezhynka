@@ -350,7 +350,7 @@ function LetterAccessDialog({ kind, letter, onClose }: { kind: 'unlock' | 'lock'
       {unlock ? (
         <>
           <p>
-            Звук {LETTERS[letter].sound}: {LETTERS[letter].say}. Буква з’явиться у вправах, а нові місії з нею стануть доступними.
+            Звук {LETTERS[letter].sound} - {LETTERS[letter].say}. Буква з’явиться у вправах, а нові місії з нею стануть доступними.
           </p>
           {PLANNED_LETTERS.includes(letter) && (
             <p>Якщо {child.name} вже знає цю букву, позначте її потім «Знає» або «Знає впевнено» - і її місії можна буде пропустити.</p>
@@ -396,7 +396,7 @@ function SkipDialog({ offer, onClose }: { offer: SkipOffer; onClose: () => void 
     >
       <p>
         {offer.kind === 'all'
-          ? `Ще не пройдених місій ${stageGenitive(offer.stage)}: ${n}. Якщо пропустити, дитячий екран одразу поведе далі.`
+          ? `${n} ${plural(n, 'місія', 'місії', 'місій')} ${stageGenitive(offer.stage)} ще не ${plural(n, 'пройдена', 'пройдені', 'пройдено')}. Якщо ${plural(n, 'її', 'їх', 'їх')} пропустити, дитячий екран одразу поведе далі.`
           : t(
               `{name} вже знає ${offer.stage.letters.join(', ')}, тож можна пропустити день знайомства з буквою і звуком (${missions}). Читання складів, слів і фраз з нею лишиться.`,
             )}
