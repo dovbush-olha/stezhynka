@@ -113,6 +113,8 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   const start = async () => {
     // Відповідаємо на дотик одразу: на телефоні мікрофон вмикається до секунди-двох.
     tappedAt.current = now();
+    // «Стоп» від попереднього запису не має зупинити новий.
+    window.clearTimeout(stopTimer.current);
     setPhase('starting');
     let rec: Awaited<ReturnType<typeof startRecording>>;
     try {
