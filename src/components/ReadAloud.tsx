@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { saveReading } from '../audio/readings';
 import { playBlob, startRecording } from '../audio/recordings';
 import { readingCheckInExercise, type ReadingCheck } from '../logic/readingCheck';
-import { readAloudLook, type ReadAloudLookId, type ReadAloudPhase } from './readAloudLook';
+import { readAloudLook, type ReadAloudIcon, type ReadAloudPhase } from './readAloudLook';
 import { ReadingMarks } from './ui';
 
 /** Найдовше читання - коротка фраза по складах. */
@@ -18,7 +18,7 @@ const untilMin = (since: number) => since + MIN_MS - performance.now();
 const now = () => performance.now();
 
 /** Піктограми круглої кнопки: мікрофон, «зачекай», «стоп», вушко. */
-const ICONS: Record<ReadAloudLookId, ReactNode> = {
+const ICONS: Record<ReadAloudIcon, ReactNode> = {
   mic: '🎙️',
   wait: (
     <span className="read-aloud__dots">
@@ -115,7 +115,6 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   const start = async () => {
     // Відповідаємо на дотик одразу: на телефоні мікрофон вмикається до секунди-двох.
     tappedAt.current = now();
-    stopWanted.current = false;
     setPhase('starting');
     let rec: Awaited<ReturnType<typeof startRecording>>;
     try {
@@ -134,7 +133,6 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     stopRef.current = rec.stop;
     recordingSince.current = now();
     setPhase('recording');
-    stopWhenReady();
     const blob = await rec.done;
     stopRef.current = undefined;
     if (!alive.current) return;
@@ -159,29 +157,28 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     else setFailed(true);
   };
 
-  const view = readAloudLook(phase, say);
+  const look = readAloudLook(phase, say);
   const onPress = phase === 'idle' ? () => void start() : phase === 'recording' ? requestStop : undefined;
   return (
-    <div className="read-aloud">
+    <div className={`read-aloud${phase === 'idle' ? '' : ' read-aloud--busy'}`}>
       <button
         type="button"
-        className={`read-aloud__button read-aloud__button--${view.look}${phase === 'idle' ? '' : ' read-aloud--busy'}`}
+        className={`read-aloud__button read-aloud__button--${look.icon}`}
         onClick={onPress}
-        disabled={!view.pressable}
-        aria-label={view.caption}
+        disabled={!look.pressable}
+        aria-label={look.caption.replace('■', '«стоп»')}
       >
-        {(view.look === 'stop' || view.look === 'ear') && (
-          <span className="read-aloud__ripples" aria-hidden="true">
-            <i />
-            <i />
-          </span>
-        )}
+        {/* Хвилі видно лише під час запису й прослуховування - так вирішують стилі. */}
+        <span className="read-aloud__ripples" aria-hidden="true">
+          <i />
+          <i />
+        </span>
         <span className="read-aloud__icon" aria-hidden="true">
-          {ICONS[view.look]}
+          {ICONS[look.icon]}
         </span>
       </button>
-      <span className={`read-aloud__caption read-aloud__caption--${view.look}`} aria-hidden="true">
-        {view.caption}
+      <span className={`read-aloud__caption read-aloud__caption--${look.icon}`} aria-hidden="true">
+        {look.caption}
       </span>
     </div>
   );

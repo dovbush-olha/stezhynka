@@ -5,7 +5,7 @@ const PHASES = ['idle', 'starting', 'recording', 'hearing'] as const;
 
 describe('readAloudLook', () => {
   it('кожен стан запису має власний вигляд кнопки: дитина, яка ще не читає, розрізняє їх без підпису', () => {
-    const looks = PHASES.map((p) => readAloudLook(p, false).look);
+    const looks = PHASES.map((p) => readAloudLook(p, false).icon);
     expect(new Set(looks).size).toBe(PHASES.length);
   });
 
