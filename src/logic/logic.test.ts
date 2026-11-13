@@ -747,6 +747,16 @@ describe('шлях букви: дорослий пропускає знайом�
     expect(upNext(s)).toBe(findStage('m')!.days[1].missions[0].id);
   });
 
+  it('після повернення до букви зі скороченим шляхом не радимо повторити давню важку місію попередньої букви', () => {
+    let s = applyKnownLetters(createInitialState(TODAY), { l: 'knows' }, TODAY);
+    s = completeAll(s, ids('vowels').slice(0, -1));
+    s = complete(s, ids('vowels').at(-1)!, 4, 6);
+    s = completeAll(s, ids('l').filter((id) => missionAvailability(s, findMission(id)!) !== 'skipped'));
+    s = redoStage(s, 'l', TODAY);
+    expect(recommend(s)).not.toMatchObject({ reason: 'repeat' });
+    expect(upNext(s)).toBe(ids('l')[0]);
+  });
+
   /** Пройдено голосні, Л, М і перша місія С; С відкрилася сама. */
   const reachedS = () => complete(completeAll(reachedM(), ids('m')), 's-1');
 

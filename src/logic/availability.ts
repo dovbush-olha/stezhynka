@@ -1,6 +1,6 @@
 import { BASE_LETTERS, PLANNED_LETTERS, type LetterId } from '../content/alphabet';
 import type { Mission } from '../content/types';
-import { COURSE_MISSIONS, stageOfMission } from '../content/course';
+import { COURSE_MISSIONS, stageMissions, stageOfMission } from '../content/course';
 import { isMissionDone, missionState, type ProgressState } from './progress';
 
 /** `skipped` - дорослий пропустив: для шляху як пройдена, але дитина може в неї пограти й отримати наліпку. */
@@ -48,7 +48,10 @@ export function recommend(state: ProgressState, missions = COURSE_MISSIONS): Rec
   const prev = index > 0 ? missions[index - 1] : undefined;
   // Пропущену місію дитина не проходила, тож і повторювати її радити нема з чого.
   // Повернута буква починається наново: підказки в останній місії попередньої букви - давні.
-  const restartsLetter = state.redo.includes(next.id) && stageOfMission(next.id) !== stageOfMission(prev?.id ?? '');
+  // Про повернення свідчить будь-яка місія етапу в черзі «ще раз»: перші могли бути пропущені й записів не мати.
+  const stage = stageOfMission(next.id);
+  const restartsLetter =
+    stage !== stageOfMission(prev?.id ?? '') && Boolean(stage && stageMissions(stage).some((m) => state.redo.includes(m.id)));
   const prevRecord = prev && missionState(state, prev.id) === 'done' && !restartsLetter ? state.missions[prev.id] : undefined;
   if (prev && prevRecord && prevRecord.lastHintRate > STRUGGLE_HINT_RATE && prevRecord.completions < MAX_SUGGESTED_REPEATS) {
     return { kind: 'mission', mission: prev, reason: 'repeat' };
