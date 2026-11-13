@@ -76,7 +76,14 @@ export function letterQuestion(state: ProgressState): LetterQuestion | undefined
   const next = nextMission(state);
   if (!letters.length || !next) return undefined;
   const stage = stageOfMission(next.id);
-  const previous = stage && previousStage(stage);
+  let previous = stage && previousStage(stage);
+  // Етап, усі місії якого дорослий пропустив, дитина не проходила - питаємо про той, що перед ним.
+  for (let p = previous; p; p = previousStage(p)) {
+    if (stageMissions(p).some((m) => missionState(state, m.id) === 'done')) {
+      previous = p;
+      break;
+    }
+  }
   return previous && { letters, previous };
 }
 

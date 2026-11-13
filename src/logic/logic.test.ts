@@ -910,6 +910,13 @@ describe('шлях букви: дорослий пропускає знайом�
     expect(upNext(s)).toBe('m-1');
   });
 
+  it('питання дорослому - про букву, яку дитина справді проходила, а не про пропущену', () => {
+    let s = applyKnownLetters(createInitialState(TODAY), { m: 'confident' }, TODAY);
+    s = updateSettings(s, { adultOpensLetters: true });
+    s = completeAll(s, [...ids('vowels'), ...ids('l')]);
+    expect(letterQuestion(s)).toMatchObject({ letters: ['С'], previous: { id: 'l' } });
+  });
+
   it('з «Нову букву відкриває дорослий» сховані поверненням букви теж чекають дорослого', () => {
     let s = updateSettings(redoStage(reachedS(), 'm', TODAY), { adultOpensLetters: true });
     s = completeAll(s, ids('m'));
