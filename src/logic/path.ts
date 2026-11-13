@@ -150,6 +150,10 @@ export function canRedoStage(state: ProgressState, stage: Stage): boolean {
 export interface RedoPreview {
   /** Скільки місій знову стане в чергу: цього етапу і всіх наступних. */
   missions: number;
+  /** Скільки з них - пройдені місії наступних етапів. */
+  laterMissions: number;
+  /** У наступних етапах є пропущені місії: вони лишаться пропущеними. */
+  laterSkipped: boolean;
   /** Букви наступних етапів, які сховаються з вправ, доки дитина до них знову не дійде. */
   hides: LetterId[];
 }
@@ -165,7 +169,14 @@ export function redoPreview(state: ProgressState, stageId: string): RedoPreview 
   const stage = findStage(stageId);
   if (!stage) return undefined;
   const later = laterStages(stage);
-  return { missions: returningMissions(state, stage, later).length, hides: lettersToHide(state, later) };
+  const missions = returningMissions(state, stage, later).length;
+  const laterIds = later.flatMap(stageMissions).map((m) => m.id);
+  return {
+    missions,
+    laterMissions: missions - returningMissions(state, stage, []).length,
+    laterSkipped: laterIds.some((id) => missionState(state, id) === 'skipped'),
+    hides: lettersToHide(state, later),
+  };
 }
 
 /**

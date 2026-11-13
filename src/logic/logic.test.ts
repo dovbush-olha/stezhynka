@@ -872,7 +872,20 @@ describe('шлях букви: дорослий пропускає знайом�
     let s = setLetterStatus(reachedS(), 'С', 'confident', TODAY);
     s = skipMissions(s, skipOffer(s, 'С')!.missions, TODAY);
     s = unlockLetter(s, 'Н', TODAY);
-    expect(redoPreview(s, 'l')).toEqual({ missions: ids('l').length + ids('m').length + 1, hides: ['М', 'Н'] });
+    expect(redoPreview(s, 'l')).toEqual({
+      missions: ids('l').length + ids('m').length + 1,
+      laterMissions: ids('m').length + 1,
+      laterSkipped: true,
+      hides: ['М', 'Н'],
+    });
+  });
+
+  it('перед поверненням до букви, після якої дитина ще нічого не проходила, мова лише про її власні місії', () => {
+    // Дитина пройшла лише кілька місій М: наступних букв ні пройдених, ні пропущених немає.
+    const s = completeAll(reachedM(), ids('m').slice(0, 2));
+    expect(redoPreview(s, 'm')).toEqual({ missions: 2, laterMissions: 0, laterSkipped: false, hides: [] });
+    // Наступні букви пройдено - їхні місії теж повертаються, а пропусків немає.
+    expect(redoPreview(reachedS(), 'l')).toMatchObject({ laterMissions: ids('m').length + 1, laterSkipped: false });
   });
 
   /** Літери-вправи: де дитина впізнає букву чи згадує її звук. */

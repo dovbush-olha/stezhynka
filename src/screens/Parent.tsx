@@ -441,8 +441,9 @@ function RedoDialog({ stage, onClose }: { stage: Stage; onClose: () => void }) {
     >
       <ul className="consequences">
         <li>
-          {n} {plural(n, 'місія знову стане', 'місії знову стануть', 'місій знову стануть')} в чергу: місії {stageGenitive(stage)} і пройдені
-          місії наступних букв. Пропущені місії наступних букв лишаться пропущеними.
+          {n} {plural(n, 'місія знову стане', 'місії знову стануть', 'місій знову стануть')} в чергу: місії {stageGenitive(stage)}
+          {preview.laterMissions > 0 && ' і пройдені місії наступних букв'}.
+          {preview.laterSkipped && ' Пропущені місії наступних букв лишаться пропущеними.'}
         </li>
         {hides.length > 0 && (
           <li>
