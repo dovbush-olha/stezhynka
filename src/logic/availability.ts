@@ -1,10 +1,34 @@
 import { BASE_LETTERS, PLANNED_LETTERS, type LetterId } from '../content/alphabet';
-import type { Mission } from '../content/types';
+import type { Day, Mission } from '../content/types';
 import { COURSE_MISSIONS, stageMissions, stageOfMission } from '../content/course';
-import { isMissionDone, missionState, type ProgressState } from './progress';
+import { isMissionDone, isMissionEarned, missionState, type ProgressState } from './progress';
 
 /** `skipped` - дорослий пропустив: для шляху як пройдена, але дитина може в неї пограти й отримати наліпку. */
 export type MissionAvailability = 'done' | 'skipped' | 'available' | 'needs-letters' | 'locked';
+
+/** Місія на дитячій мапі. */
+export interface MapMission {
+  availability: MissionAvailability;
+  /** Як місія виглядає: заробленій лишається зірочка, навіть коли дорослий повернув її в чергу. */
+  look: MissionAvailability;
+  /** Дитина вже заробила за неї зірочку. */
+  earned: boolean;
+  /** Дитина може в неї пограти: доступна, пройдена, пропущена або зароблена з відкритими буквами. */
+  playable: boolean;
+}
+
+export function mapMission(state: ProgressState, mission: Mission): MapMission {
+  const availability = missionAvailability(state, mission);
+  const earned = isMissionEarned(state, mission.id);
+  const look = earned && availability !== 'available' ? 'done' : availability;
+  const playable = availability === 'done' || availability === 'skipped' || availability === 'available' || (earned && !missingLetters(state, mission).length);
+  return { availability, look, earned, playable };
+}
+
+/** Зірочка дня - за пройдене дитиною: пропущені дорослим місії не рахуються, а повернуті в чергу - рахуються. */
+export function isDayEarned(state: ProgressState, day: Day): boolean {
+  return day.missions.every((m) => isMissionEarned(state, m.id));
+}
 
 /** Якщо в останньому проходженні підказки знадобилися частіше, радимо повторити місію. */
 export const STRUGGLE_HINT_RATE = 0.4;

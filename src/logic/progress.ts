@@ -356,8 +356,13 @@ export type MissionState = 'done' | 'skipped' | 'pending';
 /** Пройдена, пропущена дорослим чи ще в черзі (зокрема повернута «Пройти букву ще раз»). */
 export function missionState(state: ProgressState, id: string): MissionState {
   if (state.skipped.includes(id)) return 'skipped';
-  if (state.missions[id]?.completions && !state.redo.includes(id)) return 'done';
+  if (isMissionEarned(state, id) && !state.redo.includes(id)) return 'done';
   return 'pending';
+}
+
+/** Дитина хоч раз пройшла місію сама. Зароблене не забирається: повернення в чергу цього не змінює. */
+export function isMissionEarned(state: ProgressState, id: string): boolean {
+  return Boolean(state.missions[id]?.completions);
 }
 
 /** Для черги місій і відкриття букв пропущена місія - те саме, що пройдена. */

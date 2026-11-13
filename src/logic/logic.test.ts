@@ -3,7 +3,7 @@ import { NOT_YET_STUDIED, isReadableWith, type LetterId } from '../content/alpha
 import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/types';
 import { validateExercise, validateMission } from '../content/validate';
 import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
-import { adviseNextLetter, missionAvailability, recommend } from './availability';
+import { adviseNextLetter, isDayEarned, mapMission, missionAvailability, recommend } from './availability';
 import { MAX_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
 import { dueItems, practisedItems, textsOf } from './review';
 import { adaptForSolo, canPickPicture, preferRecordedVoice } from './solo';
@@ -777,6 +777,23 @@ describe('шлях букви: дорослий пропускає знайом�
     expect(s.letters.М).toMatchObject({ seen: before.letters.М!.seen, firstTry: before.letters.М!.firstTry, recent: before.letters.М!.recent });
     // Збереження читається так само.
     expect(upNext(normalizeState(JSON.parse(JSON.stringify(s)), TODAY))).toBe('m-1');
+  });
+
+  it('на мапі зароблене лишається після «Пройти букву ще раз», а пропущене зірочки не дає', () => {
+    const s = redoStage(reachedS(), 'm', TODAY);
+    const m1 = mapMission(s, findMission('m-1')!);
+    const m2 = mapMission(s, findMission('m-2')!);
+    expect(m1).toMatchObject({ availability: 'available', earned: true, playable: true });
+    // Повернута в чергу зароблена місія - зірочкою, і пограти в неї можна, бо М відкрита.
+    expect(m2).toMatchObject({ availability: 'locked', look: 'done', earned: true, playable: true });
+    // Буква С сховалася - її зароблена місія чекає, доки дитина знову не дійде.
+    expect(mapMission(s, findMission('s-1')!)).toMatchObject({ look: 'done', earned: true, playable: false });
+    expect(isDayEarned(s, findStage('m')!.days[0])).toBe(true);
+
+    let k = setLetterStatus(reachedM(), 'М', 'confident', TODAY);
+    k = skipMissions(k, skipOffer(k, 'М')!.missions, TODAY);
+    expect(mapMission(k, findMission('m-2')!)).toMatchObject({ look: 'skipped', earned: false, playable: true });
+    expect(isDayEarned(k, findStage('m')!.days[1])).toBe(false);
   });
 
   it('після повторного проходження букви наступна відкривається сама, і її місії проходяться наново', () => {

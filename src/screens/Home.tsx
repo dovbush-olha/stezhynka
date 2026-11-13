@@ -8,7 +8,7 @@ import { COURSE } from '../content/course';
 import { Helper } from '../components/Helper';
 import { ParentGate } from '../components/ParentGate';
 import { ColoredText, Modal } from '../components/ui';
-import { missingLetters, missionAvailability, recommend } from '../logic/availability';
+import { isDayEarned, mapMission, missingLetters, recommend } from '../logic/availability';
 import { updateSettings } from '../logic/progress';
 import { updateProgress, useChild, useProgress } from '../store/progressStore';
 import { StarJar } from './MissionPlayer';
@@ -33,14 +33,10 @@ export function Home({ onStart, onParent }: Props) {
   const [gate, setGate] = useState(false);
   const recommendedId = rec.kind === 'mission' ? rec.mission.id : undefined;
 
-  /** Зароблене лишається: місію, повернуту дорослим у чергу, можна й далі пограти, якщо її букви відкриті. */
-  const earned = (m: Mission) => Boolean(progress.missions[m.id]?.completions);
-
   const tapMission = (m: Mission) => {
-    const av = missionAvailability(progress, m);
-    if (av === 'done' || av === 'skipped' || av === 'available') return onStart(m);
-    if (earned(m) && !missingLetters(progress, m).length) return onStart(m);
-    if (av === 'locked') return setMessage('Ця стежка ще попереду. Спершу пройдемо попередню місію!');
+    const { playable, availability } = mapMission(progress, m);
+    if (playable) return onStart(m);
+    if (availability === 'locked') return setMessage('Ця стежка ще попереду. Спершу пройдемо попередню місію!');
     setMessage('Тут живе нова буква. Її відкриє дорослий, коли прийде час.');
   };
 
@@ -131,12 +127,10 @@ export function Home({ onStart, onParent }: Props) {
         <h2 className="section-title">Лісова мапа</h2>
         <ol className="map__days">
           {COURSE.map((day) => {
-            const states = day.missions.map((m) => missionAvailability(progress, m));
-            // Зірочка дня - за пройдене дитиною: пропущені дорослим місії не рахуються,
-            // а повернуті «Пройти букву ще раз» - рахуються, бо зароблене не забирається.
-            const dayDone = day.missions.every(earned);
+            const cells = day.missions.map((m) => mapMission(progress, m));
+            const dayDone = isDayEarned(progress, day);
             // Буква, яку сховав дорослий. Майбутні дні просто чекають своєї черги.
-            const waiting = states[0] === 'needs-letters' ? missingLetters(progress, day.missions[0]) : [];
+            const waiting = cells[0].availability === 'needs-letters' ? missingLetters(progress, day.missions[0]) : [];
             return (
               <li key={day.day} className={`map-day ${dayDone ? 'map-day--done' : ''}`}>
                 <span className="map-day__stone">
@@ -152,18 +146,17 @@ export function Home({ onStart, onParent }: Props) {
                 <span className="map-day__label">День {day.day}</span>
                 <span className="map-day__missions">
                   {day.missions.map((m, i) => {
-                    // Повернута в чергу місія лишається зірочкою, як і була: зароблене не тьмяніє.
-                    const st = earned(m) && states[i] !== 'available' ? 'done' : states[i];
+                    const { look, earned } = cells[i];
                     return (
                       <button
                         key={m.id}
                         type="button"
-                        className={`map-mission map-mission--${st} ${m.id === recommendedId ? 'map-mission--current' : ''}`}
+                        className={`map-mission map-mission--${look} ${m.id === recommendedId ? 'map-mission--current' : ''}`}
                         onClick={() => tapMission(m)}
                         aria-label={`День ${day.day}, місія ${m.order}: ${m.title}`}
                         title={m.title}
                       >
-                        <span aria-hidden="true">{earned(m) ? STATUS_ICON.done : STATUS_ICON[st]}</span>
+                        <span aria-hidden="true">{STATUS_ICON[earned ? 'done' : look]}</span>
                       </button>
                     );
                   })}
