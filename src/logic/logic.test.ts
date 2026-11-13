@@ -964,9 +964,37 @@ describe('шлях букви: дорослий пропускає знайом�
 
   it('питання дорослому - про букву, яку дитина справді проходила, а не про пропущену', () => {
     let s = applyKnownLetters(createInitialState(TODAY), { m: 'confident' }, TODAY);
-    s = updateSettings(s, { adultOpensLetters: true });
+    // Місії М пропущено, але потім дорослий засумнівався: М уже не «Знає впевнено».
+    s = setLetterStatus(updateSettings(s, { adultOpensLetters: true }), 'М', 'knows', TODAY);
     s = completeAll(s, [...ids('vowels'), ...ids('l')]);
     expect(letterQuestion(s)).toMatchObject({ letters: ['С'], previous: { id: 'l' } });
+  });
+
+  it('з «Нову букву відкриває дорослий» пропуск місій впевнено знайомої букви одразу відкриває наступну, без питання', () => {
+    let s = updateSettings(createInitialState(TODAY), { adultOpensLetters: true });
+    s = completeAll(openQuestionedLetters(completeAll(s, [...ids('vowels'), ...ids('l')]), TODAY), ['m-1']);
+    s = setLetterStatus(s, 'М', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    expect(s.unlocked).toContain('С');
+    expect(letterQuestion(s)).toBeUndefined();
+    expect(upNext(s)).toBe(ids('s')[0]);
+  });
+
+  it('з «Нову букву відкриває дорослий» «Знає впевнено» для букви, яку дитина вже пройшла, - відповідь на питання про неї', () => {
+    let s = updateSettings(createInitialState(TODAY), { adultOpensLetters: true });
+    s = completeAll(openQuestionedLetters(completeAll(s, [...ids('vowels'), ...ids('l')]), TODAY), ids('m'));
+    expect(letterQuestion(s)).toMatchObject({ letters: ['С'], previous: { id: 'm' } });
+    // «Знає» - ще не відповідь: дорослий вирішує сам.
+    expect(letterQuestion(setLetterStatus(s, 'М', 'knows', TODAY))).toMatchObject({ letters: ['С'] });
+    s = setLetterStatus(s, 'М', 'confident', TODAY);
+    expect(s.unlocked).toContain('С');
+    expect(letterQuestion(s)).toBeUndefined();
+    expect(upNext(s)).toBe(ids('s')[0]);
+    // Те саме й у збереженні, де дорослий позначив М раніше, ніж дитина її пройшла.
+    const saved = JSON.parse(JSON.stringify(s));
+    saved.unlocked = saved.unlocked.filter((l: string) => l !== 'С');
+    saved.autoUnlocked = [];
+    expect(normalizeState(saved, TODAY).unlocked).toContain('С');
   });
 
   it('з «Нову букву відкриває дорослий» сховані поверненням букви теж чекають дорослого', () => {

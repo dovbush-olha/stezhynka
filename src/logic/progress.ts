@@ -2,7 +2,7 @@ import { BASE_LETTERS, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, lettersO
 import { LEGACY_CHILD, isChild, type Child } from '../content/child';
 import { isHelperId, type HelperId } from '../content/helpers';
 import type { Mission } from '../content/types';
-import { COURSE_MISSIONS, LEGACY_MISSION_IDS } from '../content/course';
+import { COURSE_MISSIONS, LEGACY_MISSION_IDS, previousStage, stageOfMission } from '../content/course';
 import type { ItemOutcome } from './review';
 import { nextReview, type ReviewItem } from './srs';
 
@@ -397,11 +397,23 @@ export function lettersReadyToOpen(state: ProgressState, missions: Mission[] = C
 }
 
 /**
+ * Дорослий уже позначив «Знає впевнено» всі букви етапу перед місією, до якої дійшла дитина.
+ * Це й є відповідь на питання «Чи вже знає букву?», тож питати вдруге не треба.
+ */
+export function previousLettersConfident(state: ProgressState, missions: Mission[] = COURSE_MISSIONS): boolean {
+  const next = nextMission(state, missions);
+  const stage = next && stageOfMission(next.id);
+  const previous = stage && previousStage(stage);
+  return Boolean(previous?.letters.every((l) => isConfident(state, l)));
+}
+
+/**
  * Програма сама відкриває букву, до якої дійшла дитина (див. `lettersReadyToOpen`),
- * якщо дорослий не вирішив відкривати нові букви сам.
+ * якщо дорослий не вирішив відкривати нові букви сам
+ * або вже відповів, що попередні букви дитина знає впевнено.
  */
 export function autoUnlockLetters(state: ProgressState, today = todayISO(), missions: Mission[] = COURSE_MISSIONS): ProgressState {
-  if (state.settings.adultOpensLetters) return state;
+  if (state.settings.adultOpensLetters && !previousLettersConfident(state, missions)) return state;
   const ready = lettersReadyToOpen(state, missions);
   if (!ready.length) return state;
   let s = state;
@@ -409,8 +421,9 @@ export function autoUnlockLetters(state: ProgressState, today = todayISO(), miss
   return { ...s, autoUnlocked: [...s.autoUnlocked, ...ready] };
 }
 
+/** Статус ставить дорослий; «Знає впевнено» для букв, після яких чекає нова буква, її й відкриває. */
 export function setLetterStatus(state: ProgressState, id: LetterId, status: LetterStatus, today = todayISO()): ProgressState {
-  return { ...state, letters: { ...state.letters, [id]: { ...letterOf(state, id, today), status } } };
+  return autoUnlockLetters({ ...state, letters: { ...state.letters, [id]: { ...letterOf(state, id, today), status } } }, today);
 }
 
 export function unlockLetter(state: ProgressState, id: LetterId, today = todayISO()): ProgressState {
