@@ -1,5 +1,5 @@
-import type { LetterId } from './alphabet';
-import type { Day, Exercise, LetterCase, Mission } from './types';
+import { isVowel, type LetterId } from './alphabet';
+import type { Day, Exercise, LetterCase, Mission, Stage } from './types';
 
 // Короткі конструктори, щоб контент читався як план уроку.
 const intro = (letter: LetterId): Exercise => ({ kind: 'intro-letter', letter });
@@ -34,9 +34,17 @@ const withLMSNK: LetterId[] = [...withLMSN, 'К'];
 
 /** Місія без дня й номера: їх ставить `day()` за місцем у плані. */
 type MissionDraft = Omit<Mission, 'day' | 'order'>;
-type DayDraft = Omit<Day, 'day' | 'missions'> & { missions: [MissionDraft, ...MissionDraft[]] };
+type DayDraft = Omit<Day, 'day' | 'missions'> & { missions: [MissionDraft, ...MissionDraft[]]; intro?: true };
 
 const day = (title: string, badge: string, ...missions: [MissionDraft, ...MissionDraft[]]): DayDraft => ({ title, badge, missions });
+/** День знайомства з буквою і звуком: скорочений шлях етапу його пропускає. */
+const introDay = (...args: Parameters<typeof day>): DayDraft => ({ ...day(...args), intro: true });
+
+/** Початок етапу: дні після цієї позначки й до наступної належать йому. */
+interface StageMark {
+  stage: Pick<Stage, 'id' | 'letters'>;
+}
+const stage = (id: string, letters: LetterId[]): StageMark => ({ stage: { id, letters } });
 
 /**
  * Порядок: голосні → Л → М → С → Н → К. На кожну приголосну - три дні й вісім місій:
@@ -48,7 +56,8 @@ const day = (title: string, badge: string, ...missions: [MissionDraft, ...Missio
  *
  * Ідентифікатори місій не залежать від номера дня, щоб новий день не ламав збережений прогрес.
  */
-const DRAFT: DayDraft[] = [
+const DRAFT: Array<DayDraft | StageMark> = [
+  stage('vowels', VOWELS),
   day(
     'Голосні-друзі',
     'АОУ',
@@ -121,7 +130,8 @@ const DRAFT: DayDraft[] = [
   ),
 
   // ---------- Л ----------
-  day(
+  stage('l', ['Л']),
+  introDay(
     'Звук Л',
     'Л',
     {
@@ -319,7 +329,8 @@ const DRAFT: DayDraft[] = [
   ),
 
   // ---------- М ----------
-  day(
+  stage('m', ['М']),
+  introDay(
     'Звук М',
     'М',
     {
@@ -510,7 +521,8 @@ const DRAFT: DayDraft[] = [
   ),
 
   // ---------- С ----------
-  day(
+  stage('s', ['С']),
+  introDay(
     'Звук С',
     'С',
     {
@@ -698,7 +710,8 @@ const DRAFT: DayDraft[] = [
   ),
 
   // ---------- Н ----------
-  day(
+  stage('n', ['Н']),
+  introDay(
     'Звук Н',
     'Н',
     {
@@ -886,7 +899,8 @@ const DRAFT: DayDraft[] = [
   ),
 
   // ---------- К ----------
-  day(
+  stage('k', ['К']),
+  introDay(
     'Звук К',
     'К',
     {
@@ -1074,13 +1088,68 @@ const DRAFT: DayDraft[] = [
   ),
 ];
 
-export const COURSE: Day[] = DRAFT.map((d, i) => ({
-  ...d,
-  day: i + 1,
-  missions: d.missions.map((m, j) => ({ ...m, day: i + 1, order: j + 1 })) as Day['missions'],
-}));
+function buildStages(draft: ReadonlyArray<DayDraft | StageMark>): Stage[] {
+  const stages: Stage[] = [];
+  let current: { mark: StageMark['stage']; days: Day[]; introDay?: number } | undefined;
+  const close = () => {
+    if (!current) return;
+    if (!current.days.length) throw new Error(`Етап «${current.mark.id}» без жодного дня`);
+    stages.push({ ...current.mark, days: current.days as Stage['days'], introDay: current.introDay });
+  };
+  let dayNumber = 0;
+  for (const entry of draft) {
+    if ('stage' in entry) {
+      close();
+      current = { mark: entry.stage, days: [] };
+      continue;
+    }
+    if (!current) throw new Error('План має починатися з позначки етапу');
+    dayNumber += 1;
+    const { intro, ...d } = entry;
+    const n = dayNumber;
+    current.days.push({ ...d, day: n, missions: d.missions.map((m, j) => ({ ...m, day: n, order: j + 1 })) as Day['missions'] });
+    if (intro) current.introDay = n;
+  }
+  close();
+  return stages;
+}
+
+export const COURSE_STAGES: Stage[] = buildStages(DRAFT);
+
+export const COURSE: Day[] = COURSE_STAGES.flatMap((s) => s.days);
 
 export const COURSE_MISSIONS: Mission[] = COURSE.flatMap((d) => d.missions);
+
+export function stageMissions(stage: Stage): Mission[] {
+  return stage.days.flatMap((d) => d.missions);
+}
+
+/** Місії дня знайомства з буквою і звуком; у голосних їх немає. */
+export function introMissions(stage: Stage): Mission[] {
+  return stage.days.find((d) => d.day === stage.introDay)?.missions ?? [];
+}
+
+/** Спільний етап голосних: один день, і місії в голосних спільні. */
+export function isVowelStage(stage: Stage): boolean {
+  return stage.letters.every(isVowel);
+}
+
+export function previousStage(stage: Stage): Stage | undefined {
+  const index = COURSE_STAGES.indexOf(stage);
+  return index > 0 ? COURSE_STAGES[index - 1] : undefined;
+}
+
+export function findStage(id: string): Stage | undefined {
+  return COURSE_STAGES.find((s) => s.id === id);
+}
+
+export function stageOfLetter(letter: LetterId): Stage | undefined {
+  return COURSE_STAGES.find((s) => s.letters.includes(letter));
+}
+
+export function stageOfMission(id: string): Stage | undefined {
+  return COURSE_STAGES.find((s) => stageMissions(s).some((m) => m.id === id));
+}
 
 /**
  * Ідентифікатори місій, коли план був на 7 днів (w1d<день>m<місія>), → нинішні.

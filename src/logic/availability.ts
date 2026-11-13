@@ -1,9 +1,34 @@
 import { BASE_LETTERS, PLANNED_LETTERS, type LetterId } from '../content/alphabet';
-import type { Mission } from '../content/types';
-import { COURSE_MISSIONS } from '../content/course';
-import type { ProgressState } from './progress';
+import type { Day, Mission } from '../content/types';
+import { COURSE_MISSIONS, stageMissions, stageOfMission } from '../content/course';
+import { isMissionDone, isMissionEarned, missionState, type ProgressState } from './progress';
 
-export type MissionAvailability = 'done' | 'available' | 'needs-letters' | 'locked';
+/** `skipped` - дорослий пропустив: для шляху як пройдена, але дитина може в неї пограти й отримати наліпку. */
+export type MissionAvailability = 'done' | 'skipped' | 'available' | 'needs-letters' | 'locked';
+
+/** Місія на дитячій мапі. */
+export interface MapMission {
+  availability: MissionAvailability;
+  /** Як місія виглядає: заробленій лишається зірочка, навіть коли дорослий повернув її в чергу. */
+  look: MissionAvailability;
+  /** Дитина вже заробила за неї зірочку. */
+  earned: boolean;
+  /** Дитина може в неї пограти: доступна, пройдена, пропущена або зароблена з відкритими буквами. */
+  playable: boolean;
+}
+
+export function mapMission(state: ProgressState, mission: Mission): MapMission {
+  const availability = missionAvailability(state, mission);
+  const earned = isMissionEarned(state, mission.id);
+  const look = earned && availability !== 'available' ? 'done' : availability;
+  const playable = availability === 'done' || availability === 'skipped' || availability === 'available' || (earned && !missingLetters(state, mission).length);
+  return { availability, look, earned, playable };
+}
+
+/** Зірочка дня - за пройдене дитиною: пропущені дорослим місії не рахуються, а повернуті в чергу - рахуються. */
+export function isDayEarned(state: ProgressState, day: Day): boolean {
+  return day.missions.every((m) => isMissionEarned(state, m.id));
+}
 
 /** Якщо в останньому проходженні підказки знадобилися частіше, радимо повторити місію. */
 export const STRUGGLE_HINT_RATE = 0.4;
@@ -17,10 +42,17 @@ export function missingLetters(state: ProgressState, mission: Mission): LetterId
 }
 
 export function missionAvailability(state: ProgressState, mission: Mission, missions = COURSE_MISSIONS): MissionAvailability {
-  if (state.missions[mission.id]?.completions) return 'done';
+  const own = missionState(state, mission.id);
+  if (own === 'done') return 'done';
   const index = missions.findIndex((m) => m.id === mission.id);
+  if (own === 'skipped') {
+    if (!missingLetters(state, mission).length) return 'skipped';
+    // Букву пропущеної місії сховано: поверненням - відкриється сама, коли дитина дійде; дорослим - лише він її відкриє.
+    const next = missions.findIndex((m) => !isMissionDone(state, m.id));
+    return next !== -1 && next < index ? 'locked' : 'needs-letters';
+  }
   const prev = index > 0 ? missions[index - 1] : undefined;
-  if (prev && !state.missions[prev.id]?.completions) return 'locked';
+  if (prev && !isMissionDone(state, prev.id)) return 'locked';
   // Попередню пройдено, а букви немає: дорослий її сховав, і відкрити її може лише він.
   if (missingLetters(state, mission).length) return 'needs-letters';
   return 'available';
@@ -34,11 +66,18 @@ export type Recommendation =
   | { kind: 'practice'; reason: 'review'; nextMission: Mission };
 
 export function recommend(state: ProgressState, missions = COURSE_MISSIONS): Recommendation {
-  const index = missions.findIndex((m) => !state.missions[m.id]?.completions);
+  const index = missions.findIndex((m) => !isMissionDone(state, m.id));
   if (index === -1) return { kind: 'practice', reason: 'all-done' };
   const next = missions[index];
   const prev = index > 0 ? missions[index - 1] : undefined;
-  const prevRecord = prev ? state.missions[prev.id] : undefined;
+  // Пропущену місію дитина не проходила, тож і повторювати її радити нема з чого.
+  // Повернута буква починається наново: підказки в останній місії попередньої букви - давні.
+  // Про повернення свідчить будь-яка місія етапу в черзі «ще раз»: перші могли бути пропущені й записів не мати.
+  const stage = stageOfMission(next.id);
+  const restartsLetter = Boolean(
+    prev && stage && stage !== stageOfMission(prev.id) && stageMissions(stage).some((m) => state.redo.includes(m.id)),
+  );
+  const prevRecord = prev && missionState(state, prev.id) === 'done' && !restartsLetter ? state.missions[prev.id] : undefined;
   if (prev && prevRecord && prevRecord.lastHintRate > STRUGGLE_HINT_RATE && prevRecord.completions < MAX_SUGGESTED_REPEATS) {
     return { kind: 'mission', mission: prev, reason: 'repeat' };
   }
@@ -69,13 +108,12 @@ export function adviseNextLetter(state: ProgressState, missions = COURSE_MISSION
 
   const newest = [...PLANNED_LETTERS].reverse().find((l) => state.unlocked.includes(l)) ?? BASE_LETTERS[BASE_LETTERS.length - 1];
   const reachable = missions.filter((m) => m.requires.every((l) => state.unlocked.includes(l)));
-  const pending = reachable.filter((m) => !state.missions[m.id]?.completions);
+  const pending = reachable.filter((m) => !isMissionDone(state, m.id));
   if (pending.length) {
-    return {
-      letter,
-      ready: false,
-      message: `Буква ${letter} відкриється сама, коли {name} пройде доступні місії (залишилось ${pending.length}). Якщо в школі її вже вчили, можна відкрити й зараз.`,
-    };
+    const when = state.settings.adultOpensLetters
+      ? `Коли {name} пройде доступні місії (залишилось ${pending.length}), тут з’явиться питання, чи відкривати ${letter}.`
+      : `Буква ${letter} відкриється сама, коли {name} пройде доступні місії (залишилось ${pending.length}).`;
+    return { letter, ready: false, message: `${when} Якщо в школі її вже вчили, можна відкрити й зараз.` };
   }
 
   const lp = state.letters[newest];

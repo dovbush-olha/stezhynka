@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { BackupError, backupFileName, base64ToBytes, bytesToBase64, parseBackup } from './backup';
-import { createInitialState } from './progress';
+import { VOWELS_FIRST } from '../content/alphabet';
+import { findMission } from '../content/course';
+import { missionAvailability } from './availability';
+import { redoStage, skipMissions, skipOffer } from './path';
+import { completeMission, createInitialState, setLetterStatus, updateSettings, type ProgressState } from './progress';
 
 const TODAY = '2026-11-09';
 
@@ -49,6 +53,29 @@ describe('файл збереження', () => {
     expect(together.settings.child?.name).toBe('Андрій');
     expect(old('solo', true).settings.recordReading).toBe(true);
     expect(old('solo', false).settings.recordReading).toBe(false);
+  });
+
+  it('зберігає пропуски, повернення й «Нову букву відкриває дорослий»; стара копія без них відновлюється', () => {
+    // Голосні пропущено, Л пройдено й повернуто «Пройти букву ще раз», нові букви відкриває дорослий.
+    let progress = updateSettings(createInitialState(TODAY), { adultOpensLetters: true });
+    for (const l of VOWELS_FIRST) progress = setLetterStatus(progress, l, 'confident', TODAY);
+    progress = skipMissions(progress, skipOffer(progress, 'А')!.missions, TODAY);
+    progress = completeMission(progress, { missionId: 'l-1', sticker: '🦊', scored: 5, hinted: 0, readAlone: 0, readTotal: 0 }, TODAY);
+    progress = redoStage(progress, 'l', TODAY);
+    const availability = (p: ProgressState) => ['vowels-1', 'l-1', 'l-2'].map((id) => missionAvailability(p, findMission(id)!));
+
+    const raw = JSON.parse(file());
+    raw.progress = JSON.parse(JSON.stringify(progress));
+    const b = parseBackup(JSON.stringify(raw), TODAY).progress;
+    expect(availability(b)).toEqual(['skipped', 'available', 'locked']);
+    expect(b.settings.adultOpensLetters).toBe(true);
+
+    // Стара копія - без нових полів: нічого не пропущено, нічого не повернуто, букви відкриваються самі.
+    const old = JSON.parse(file());
+    const restored = parseBackup(JSON.stringify(old), TODAY).progress;
+    expect(availability(restored)).toEqual(['available', 'locked', 'locked']);
+    expect(restored.stars).toBe(12);
+    expect(restored.settings.adultOpensLetters).toBe(false);
   });
 
   it.each([

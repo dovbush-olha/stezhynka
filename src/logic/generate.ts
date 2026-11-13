@@ -2,7 +2,7 @@ import { BASE_LETTERS, LETTERS, LOOKALIKES, isReadableWith, lettersOf, toLower, 
 import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
 import { COURSE_MISSIONS } from '../content/course';
-import { PRACTICE_ID, type ProgressState } from './progress';
+import { PRACTICE_ID, isConfident, isKnownByAdult, nextMission, type LetterStatus, type ProgressState } from './progress';
 import { dueItems, isWordItem, textsOf } from './review';
 import { compareCloseness, closeness } from './similar';
 import { isDue } from './srs';
@@ -51,12 +51,20 @@ export function prepareExercise(ex: Exercise, rng: Rng): Exercise {
   }
 }
 
-/** Букви, які дитина вже бачила (базові вважаються знайомими зі школи). */
-function introducedLetters(state: ProgressState): LetterId[] {
-  return state.unlocked.filter((l) => BASE_LETTERS.includes(l) || (state.letters[l]?.seen ?? 0) > 0);
+/**
+ * Чи знайома дитині буква: вже бачила її у вправах, базова (знайома зі школи)
+ * або дорослий сам позначив, що дитина її знає, - тоді знайомити з нею наново не треба.
+ */
+function isIntroduced(state: ProgressState, l: LetterId): boolean {
+  return BASE_LETTERS.includes(l) || (state.letters[l]?.seen ?? 0) > 0 || isKnownByAdult(state, l);
 }
 
-const STATUS_WEIGHT = { learning: 0, sometimes: 1, knows: 2 } as const;
+function introducedLetters(state: ProgressState): LetterId[] {
+  return state.unlocked.filter((l) => isIntroduced(state, l));
+}
+
+/** Що нижча вага, то раніше буква в черзі повторення; впевнено знайомі - в самому кінці. */
+const STATUS_WEIGHT: Record<LetterStatus, number> = { learning: 0, sometimes: 1, knows: 2, confident: 3 };
 
 /** Букви, яким час повторення, від найважчих. */
 export function dueLetters(state: ProgressState, today: string, exclude: LetterId[] = []): LetterId[] {
@@ -125,7 +133,10 @@ export function warmUp(state: ProgressState, mission: Mission, today: string, rn
   // Нову букву місії до знайомства з нею не показуємо навіть як зайвий варіант.
   const known = pool.filter((l) => !(mission.newLetters ?? []).includes(l));
   const out: Exercise[] = [];
-  const letter = dueLetters(state, today, [...(mission.newLetters ?? []), ...alreadyPractised]).find((l) => known.includes(l));
+  // Впевнено знайому букву дорослий позначив саме для того, щоб на неї більше не витрачати час.
+  const letter = dueLetters(state, today, [...(mission.newLetters ?? []), ...alreadyPractised]).find(
+    (l) => known.includes(l) && !isConfident(state, l),
+  );
   if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng)));
 
   for (const text of dueItems(state.review, today, known, textsOf(mission.exercises))) {
@@ -206,15 +217,18 @@ const NOT_DUE = 1e6;
  * Нову букву наступної місії не чіпаємо: з нею знайомить сама місія.
  */
 export function buildPracticeMission(state: ProgressState, today: string, rng: Rng, missions: Mission[] = COURSE_MISSIONS): Mission {
-  const next = missions.find((m) => !state.missions[m.id]?.completions);
+  const next = nextMission(state, missions);
   const held = (next?.newLetters ?? []).filter((l) => (state.letters[l]?.seen ?? 0) === 0);
   const letters = state.unlocked.filter((l) => !held.includes(l));
   const exercises: Exercise[] = [];
 
-  const fresh = letters.find((l) => !BASE_LETTERS.includes(l) && (state.letters[l]?.seen ?? 0) === 0);
+  const fresh = letters.find((l) => !isIntroduced(state, l));
   if (fresh) exercises.push({ kind: 'intro-letter', letter: fresh }, letterExercise(fresh, letters, rng, 'find-letter'));
 
-  const due = dueLetters(state, today, [...(fresh ? [fresh] : []), ...held]);
+  const dueAll = dueLetters(state, today, [...(fresh ? [fresh] : []), ...held]);
+  // Повторення - про те, що ще не засвоєно: впевнено знайомі букви лише тоді, коли іншим повторення не потрібне.
+  const unsure = dueAll.filter((l) => !isConfident(state, l));
+  const due = unsure.length ? unsure : dueAll;
   const introduced = introducedLetters(state).filter((l) => letters.includes(l) && LETTERS[l].kind !== 'sign');
   // З новою буквою місія й так довга: старі букви повторить розминка звичайних місій.
   const focus = (due.length ? due : shuffle(introduced, rng)).slice(0, fresh ? 0 : 2);

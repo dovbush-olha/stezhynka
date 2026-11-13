@@ -8,7 +8,7 @@ import { COURSE } from '../content/course';
 import { Helper } from '../components/Helper';
 import { ParentGate } from '../components/ParentGate';
 import { ColoredText, Modal } from '../components/ui';
-import { missingLetters, missionAvailability, recommend } from '../logic/availability';
+import { isDayEarned, mapMission, missingLetters, recommend } from '../logic/availability';
 import { updateSettings } from '../logic/progress';
 import { updateProgress, useChild, useProgress } from '../store/progressStore';
 import { StarJar } from './MissionPlayer';
@@ -18,7 +18,8 @@ interface Props {
   onParent: () => void;
 }
 
-const STATUS_ICON = { done: '⭐', available: '🌱', locked: '🔒', 'needs-letters': '🔒' } as const;
+// Пропущена місія - як пройдена, але зірочку дитина ще не заробила.
+const STATUS_ICON = { done: '⭐', skipped: '☆', available: '🌱', locked: '🔒', 'needs-letters': '🔒' } as const;
 
 export function Home({ onStart, onParent }: Props) {
   const progress = useProgress();
@@ -33,9 +34,9 @@ export function Home({ onStart, onParent }: Props) {
   const recommendedId = rec.kind === 'mission' ? rec.mission.id : undefined;
 
   const tapMission = (m: Mission) => {
-    const av = missionAvailability(progress, m);
-    if (av === 'done' || av === 'available') return onStart(m);
-    if (av === 'locked') return setMessage('Ця стежка ще попереду. Спершу пройдемо попередню місію!');
+    const { playable, availability } = mapMission(progress, m);
+    if (playable) return onStart(m);
+    if (availability === 'locked') return setMessage('Ця стежка ще попереду. Спершу пройдемо попередню місію!');
     setMessage('Тут живе нова буква. Її відкриє дорослий, коли прийде час.');
   };
 
@@ -126,10 +127,10 @@ export function Home({ onStart, onParent }: Props) {
         <h2 className="section-title">Лісова мапа</h2>
         <ol className="map__days">
           {COURSE.map((day) => {
-            const states = day.missions.map((m) => missionAvailability(progress, m));
-            const dayDone = states.every((s) => s === 'done');
+            const cells = day.missions.map((m) => mapMission(progress, m));
+            const dayDone = isDayEarned(progress, day);
             // Буква, яку сховав дорослий. Майбутні дні просто чекають своєї черги.
-            const waiting = states[0] === 'needs-letters' ? missingLetters(progress, day.missions[0]) : [];
+            const waiting = cells[0].availability === 'needs-letters' ? missingLetters(progress, day.missions[0]) : [];
             return (
               <li key={day.day} className={`map-day ${dayDone ? 'map-day--done' : ''}`}>
                 <span className="map-day__stone">
@@ -145,17 +146,17 @@ export function Home({ onStart, onParent }: Props) {
                 <span className="map-day__label">День {day.day}</span>
                 <span className="map-day__missions">
                   {day.missions.map((m, i) => {
-                    const st = states[i];
+                    const { look, earned } = cells[i];
                     return (
                       <button
                         key={m.id}
                         type="button"
-                        className={`map-mission map-mission--${st} ${m.id === recommendedId ? 'map-mission--current' : ''}`}
+                        className={`map-mission map-mission--${look} ${m.id === recommendedId ? 'map-mission--current' : ''}`}
                         onClick={() => tapMission(m)}
                         aria-label={`День ${day.day}, місія ${m.order}: ${m.title}`}
                         title={m.title}
                       >
-                        <span aria-hidden="true">{STATUS_ICON[st]}</span>
+                        <span aria-hidden="true">{STATUS_ICON[earned ? 'done' : look]}</span>
                       </button>
                     );
                   })}

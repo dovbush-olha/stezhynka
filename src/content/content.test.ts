@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { LETTERS, NOT_YET_STUDIED, VOWELS_FIRST, UKRAINIAN_ALPHABET, lettersOf } from './alphabet';
+import { LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, lettersOf } from './alphabet';
 import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN } from './phrases';
 import { validateMission } from './validate';
-import { COURSE, COURSE_MISSIONS, LEGACY_MISSION_IDS } from './course';
+import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
 import type { Exercise, LetterId } from './types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from './words';
 
@@ -180,6 +180,32 @@ describe('план місій', () => {
   it('нові букви з’являються поступово і лише з плану', () => {
     const introduced = COURSE_MISSIONS.flatMap((m) => m.newLetters ?? []);
     expect(introduced).toEqual(['Е', 'И', 'Л', 'М', 'С', 'Н', 'К']);
+  });
+
+  it('кожна місія плану належить рівно одному етапу, і етапи йдуть у порядку плану', () => {
+    const inStages = COURSE_STAGES.flatMap((s) => stageMissions(s).map((m) => m.id));
+    expect(inStages).toEqual(COURSE_MISSIONS.map((m) => m.id));
+    expect(new Set(COURSE_STAGES.map((s) => s.id)).size).toBe(COURSE_STAGES.length);
+  });
+
+  it('етапи - голосні, а далі по одному на кожну приголосну плану; кожен знайомить зі своїми буквами', () => {
+    expect(COURSE_STAGES.map((s) => s.letters)).toEqual([VOWELS_FIRST, ['Л'], ...PLANNED_LETTERS.map((l) => [l])]);
+    for (const s of COURSE_STAGES) {
+      // Розминка й автоматичне відкриття спираються на те, що букву етапу вимагають усі його місії.
+      for (const m of stageMissions(s)) expect(m.requires, m.id).toEqual(expect.arrayContaining(s.letters));
+    }
+  });
+
+  it('у кожному етапі приголосної є день знайомства - перший день етапу, з місією, що вчить букву', () => {
+    for (const s of COURSE_STAGES) {
+      if (isVowelStage(s)) {
+        expect(s.introDay, s.id).toBeUndefined();
+        continue;
+      }
+      expect(s.introDay, s.id).toBe(s.days[0].day);
+      expect(s.days.length, s.id).toBeGreaterThan(1);
+      expect(introMissions(s)[0].newLetters, s.id).toEqual(s.letters);
+    }
   });
 
   it('використовує всі види вправ', () => {

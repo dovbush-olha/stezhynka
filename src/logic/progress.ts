@@ -2,13 +2,19 @@ import { BASE_LETTERS, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, lettersO
 import { LEGACY_CHILD, isChild, type Child } from '../content/child';
 import { isHelperId, type HelperId } from '../content/helpers';
 import type { Mission } from '../content/types';
-import { COURSE_MISSIONS, LEGACY_MISSION_IDS } from '../content/course';
+import { COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, previousStage, stageOfMission } from '../content/course';
 import type { ItemOutcome } from './review';
 import { nextReview, type ReviewItem } from './srs';
 
-export type LetterStatus = 'knows' | 'sometimes' | 'learning';
+/** «Знає впевнено» ставить лише дорослий: програма його ніколи не пропонує. */
+export type LetterStatus = 'confident' | 'knows' | 'sometimes' | 'learning';
+
+export const LETTER_STATUSES: readonly LetterStatus[] = ['confident', 'knows', 'sometimes', 'learning'];
+
+const isLetterStatus = (v: unknown): v is LetterStatus => LETTER_STATUSES.includes(v as LetterStatus);
 
 export const LETTER_STATUS_LABEL: Record<LetterStatus, string> = {
+  confident: 'Знає впевнено',
   knows: 'Знає',
   sometimes: 'Іноді забуває',
   learning: 'Ще вчить',
@@ -52,6 +58,11 @@ export interface Settings {
   recordReading: boolean;
   /** Склади з дужками й кнопка 🔊 видно одразу; вимкнено - лише після «Підказка». */
   openHints: boolean;
+  /**
+   * Нова буква плану не відкривається сама після останньої місії попередньої:
+   * дорослий спершу відповідає, чи дитина вже знає попередню.
+   */
+  adultOpensLetters: boolean;
   /** Хто грається. null - ще не знайомилися: застосунок спершу спитає ім'я. */
   child: Child | null;
 }
@@ -63,6 +74,7 @@ export const DEFAULT_SETTINGS: Settings = {
   helper: 'fox',
   recordReading: true,
   openHints: true,
+  adultOpensLetters: false,
   child: null,
 };
 
@@ -78,6 +90,7 @@ function normalizeSettings(raw: unknown): Settings {
     // мікрофон у такому режимі не вмикався, тож і після оновлення застосунок сам його не попросить.
     recordReading: r.mode !== 'together' && (typeof r.recordReading === 'boolean' ? r.recordReading : d.recordReading),
     openHints: typeof r.openHints === 'boolean' ? r.openHints : d.openHints,
+    adultOpensLetters: typeof r.adultOpensLetters === 'boolean' ? r.adultOpensLetters : d.adultOpensLetters,
     // Збережений прогрес без поля child - з часів, коли застосунок був лише для Майї.
     child: isChild(r.child) ? r.child : 'child' in r ? null : LEGACY_CHILD,
   };
@@ -97,7 +110,15 @@ export interface ProgressState {
   review: Record<string, ReviewItem>;
   /** Скільки нових місій пройдено після останнього «Повторення в лісі». */
   sinceReview: number;
+  /** Записи про проходження: лише додаються, «Пройти букву ще раз» їх не стирає. */
   missions: Record<string, MissionRecord>;
+  /**
+   * Місії, які дорослий пропустив, бо дитина букву вже знає. Для шляху вони рахуються пройденими,
+   * але наліпки за них немає, доки дитина справді їх не пройде.
+   */
+  skipped: string[];
+  /** Пройдені місії, які дорослий повернув у чергу («Пройти букву ще раз»); знімається, коли місію пройдено знову. */
+  redo: string[];
   stickers: string[];
   /** Зірочки за кожне виконане завдання. Лише додаються, ніколи не забираються. */
   stars: number;
@@ -154,6 +175,8 @@ export function createInitialState(today = todayISO()): ProgressState {
     review: {},
     sinceReview: 0,
     missions: {},
+    skipped: [],
+    redo: [],
     stickers: [],
     stars: 0,
     settings: { ...DEFAULT_SETTINGS },
@@ -178,6 +201,7 @@ export function normalizeState(raw: unknown, today = todayISO()): ProgressState 
       letters[k] = {
         ...freshLetter('learning', today),
         ...lp,
+        status: isLetterStatus(lp.status) ? lp.status : 'learning',
         recent: Array.isArray(lp.recent) ? lp.recent.slice(-RECENT_WINDOW) : [],
       };
     }
@@ -194,6 +218,8 @@ export function normalizeState(raw: unknown, today = todayISO()): ProgressState 
       review: normalizeReview(r.review),
       sinceReview: typeof r.sinceReview === 'number' && r.sinceReview >= 0 ? Math.floor(r.sinceReview) : 0,
       missions: normalizeMissions(r.missions),
+      skipped: normalizeMissionIds(r.skipped),
+      redo: normalizeMissionIds(r.redo),
       stickers: Array.isArray(r.stickers) ? r.stickers : [],
       stars: typeof r.stars === 'number' && r.stars >= 0 ? Math.floor(r.stars) : 0,
       settings: normalizeSettings(r.settings),
@@ -212,6 +238,16 @@ function normalizeMissions(raw: unknown): Record<string, MissionRecord> {
     else if (!(current in (raw as object))) missions[current] = record;
   }
   return missions;
+}
+
+/** Список місій зі збереження: лише наявні в плані, старі ідентифікатори - на нинішні. */
+function normalizeMissionIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const ids = raw
+    .filter((id): id is string => typeof id === 'string')
+    .map((id) => LEGACY_MISSION_IDS[id] ?? id)
+    .filter((id) => COURSE_MISSIONS.some((m) => m.id === id));
+  return [...new Set(ids)];
 }
 
 function normalizeReview(raw: unknown): Record<string, ReviewItem> {
@@ -288,6 +324,7 @@ export interface MissionSummary {
 
 export function completeMission(state: ProgressState, s: MissionSummary, today = todayISO()): ProgressState {
   const prev = state.missions[s.missionId];
+  const wasDone = isMissionDone(state, s.missionId);
   return autoUnlockLetters(
     {
       ...state,
@@ -301,30 +338,92 @@ export function completeMission(state: ProgressState, s: MissionSummary, today =
           lastReadTotal: s.readTotal,
         },
       },
+      // Пройдена пропущена чи повернута місія стає звичайною пройденою.
+      skipped: without(state.skipped, s.missionId),
+      redo: without(state.redo, s.missionId),
       stickers: state.stickers.includes(s.sticker) ? state.stickers : [...state.stickers, s.sticker],
-      // Повторна місія сама вже повторення - рахуємо лише нові.
-      sinceReview: s.missionId === PRACTICE_ID ? 0 : state.sinceReview + (prev?.completions ? 0 : 1),
+      // Повторна місія сама вже повторення - рахуємо лише нові для шляху.
+      sinceReview: s.missionId === PRACTICE_ID ? 0 : state.sinceReview + (wasDone ? 0 : 1),
     },
     today,
   );
 }
 
-/**
- * Коли всі місії до наступної пройдено, а їй бракує лише букви з плану (М, С, Н, К),
- * програма відкриває цю букву сама. Букву, яку дорослий сховав, повторно не відкриває.
- */
-export function autoUnlockLetters(state: ProgressState, today = todayISO(), missions: Mission[] = COURSE_MISSIONS): ProgressState {
-  const next = missions.find((m) => !state.missions[m.id]?.completions);
-  if (!next) return state;
-  const missing = next.requires.filter((l) => !state.unlocked.includes(l));
-  if (!missing.length || !missing.every((l) => PLANNED_LETTERS.includes(l) && !state.autoUnlocked.includes(l))) return state;
-  let s = state;
-  for (const l of missing) s = unlockLetter(s, l, today);
-  return { ...s, autoUnlocked: [...s.autoUnlocked, ...missing] };
+const without = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : list);
+
+export type MissionState = 'done' | 'skipped' | 'pending';
+
+/** Пройдена, пропущена дорослим чи ще в черзі (зокрема повернута «Пройти букву ще раз»). */
+export function missionState(state: ProgressState, id: string): MissionState {
+  if (state.skipped.includes(id)) return 'skipped';
+  if (isMissionEarned(state, id) && !state.redo.includes(id)) return 'done';
+  return 'pending';
 }
 
+/** Дорослий позначив букву «Знає впевнено»: на неї вже не варто витрачати час. */
+export function isConfident(state: ProgressState, l: LetterId): boolean {
+  return state.letters[l]?.status === 'confident';
+}
+
+/** Дорослий позначив, що дитина знає букву: «Знає» чи «Знає впевнено». */
+export function isKnownByAdult(state: ProgressState, l: LetterId): boolean {
+  const status = state.letters[l]?.status;
+  return status === 'knows' || status === 'confident';
+}
+
+/** Дитина хоч раз пройшла місію сама. Зароблене не забирається: повернення в чергу цього не змінює. */
+export function isMissionEarned(state: ProgressState, id: string): boolean {
+  return Boolean(state.missions[id]?.completions);
+}
+
+/** Для черги місій і відкриття букв пропущена місія - те саме, що пройдена. */
+export function isMissionDone(state: ProgressState, id: string): boolean {
+  return missionState(state, id) !== 'pending';
+}
+
+export function nextMission(state: ProgressState, missions: Mission[] = COURSE_MISSIONS): Mission | undefined {
+  return missions.find((m) => !isMissionDone(state, m.id));
+}
+
+/**
+ * Букви з плану (М, С, Н, К), яких бракує наступній місії, коли всі місії до неї пройдено.
+ * Букву, яку дорослий сховав, не повертаємо: її відкриває лише він.
+ */
+export function lettersReadyToOpen(state: ProgressState, missions: Mission[] = COURSE_MISSIONS): LetterId[] {
+  const next = nextMission(state, missions);
+  if (!next) return [];
+  const missing = next.requires.filter((l) => !state.unlocked.includes(l));
+  return missing.every((l) => PLANNED_LETTERS.includes(l) && !state.autoUnlocked.includes(l)) ? missing : [];
+}
+
+/**
+ * Дорослий уже позначив «Знає впевнено» всі букви етапу перед місією, до якої дійшла дитина.
+ * Це й є відповідь на питання «Чи вже знає букву?», тож питати вдруге не треба.
+ */
+export function previousLettersConfident(state: ProgressState, missions: Mission[] = COURSE_MISSIONS): boolean {
+  const next = nextMission(state, missions);
+  const stage = next && stageOfMission(next.id);
+  const previous = stage && previousStage(stage);
+  return Boolean(previous?.letters.every((l) => isConfident(state, l)));
+}
+
+/**
+ * Програма сама відкриває букву, до якої дійшла дитина (див. `lettersReadyToOpen`),
+ * якщо дорослий не вирішив відкривати нові букви сам
+ * або вже відповів, що попередні букви дитина знає впевнено.
+ */
+export function autoUnlockLetters(state: ProgressState, today = todayISO(), missions: Mission[] = COURSE_MISSIONS): ProgressState {
+  if (state.settings.adultOpensLetters && !previousLettersConfident(state, missions)) return state;
+  const ready = lettersReadyToOpen(state, missions);
+  if (!ready.length) return state;
+  let s = state;
+  for (const l of ready) s = unlockLetter(s, l, today);
+  return { ...s, autoUnlocked: [...s.autoUnlocked, ...ready] };
+}
+
+/** Статус ставить дорослий; «Знає впевнено» для букв, після яких чекає нова буква, її й відкриває. */
 export function setLetterStatus(state: ProgressState, id: LetterId, status: LetterStatus, today = todayISO()): ProgressState {
-  return { ...state, letters: { ...state.letters, [id]: { ...letterOf(state, id, today), status } } };
+  return autoUnlockLetters({ ...state, letters: { ...state.letters, [id]: { ...letterOf(state, id, today), status } } }, today);
 }
 
 export function unlockLetter(state: ProgressState, id: LetterId, today = todayISO()): ProgressState {
@@ -335,6 +434,16 @@ export function unlockLetter(state: ProgressState, id: LetterId, today = todayIS
     unlocked,
     letters: { ...state.letters, [id]: state.letters[id] ?? freshLetter('learning', today) },
   };
+}
+
+/**
+ * Відкриті букви в порядку, у якому їх вчать: спершу букви плану (голосні, Л, М, С, Н, К),
+ * далі решта за абеткою. Збережений список - за абеткою, тож порядок для показу береться звідси.
+ */
+export function unlockedInCourseOrder(state: ProgressState): LetterId[] {
+  const plan = COURSE_STAGES.flatMap((stage) => stage.letters);
+  const others = UKRAINIAN_ALPHABET.filter((l) => !plan.includes(l));
+  return [...plan, ...others].filter((l) => state.unlocked.includes(l));
 }
 
 export function lockLetter(state: ProgressState, id: LetterId): ProgressState {
@@ -355,7 +464,8 @@ export function suggestStatus(lp: LetterProgress | undefined): LetterStatus | un
   if (!lp || lp.recent.length < 4) return undefined;
   const ok = lp.recent.filter(Boolean).length;
   const ratio = ok / lp.recent.length;
-  if (ratio >= 0.85) return 'knows';
+  // «Знає впевнено» ставить лише дорослий, і знижувати його до «Знає» за самими лише вдалими відповідями не радимо.
+  if (ratio >= 0.85) return lp.status === 'confident' ? undefined : 'knows';
   if (ratio >= 0.5) return 'sometimes';
   return 'learning';
 }
