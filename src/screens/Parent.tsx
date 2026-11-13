@@ -726,7 +726,7 @@ function SettingsTab() {
     <>
       <section className="panel">
         <h2 className="panel__title">Дитина</h2>
-        <ChildForm initial={child} submitLabel="Зберегти" onSave={(c) => set({ child: c })} />
+        <ChildForm initial={child} submitLabel="Зберегти" requireChange onSave={(c) => set({ child: c })} />
       </section>
 
       <section className="panel settings">

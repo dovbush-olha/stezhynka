@@ -14,8 +14,10 @@ export function Welcome() {
   const { helper } = useProgress().settings;
   const [child, setChild] = useState<Child | null>(null);
   const [step, setStep] = useState<'name' | 'letters'>('name');
-  const begin = (c: Child, choices: KnownChoices = {}) =>
-    updateProgress((s) => applyKnownLetters(updateSettings(s, { child: c }), choices, todayISO()));
+  // Відповіді про букви живуть тут, а не в кроці букв: повернувшись змінити ім'я, дорослий їх не втратить.
+  const [choices, setChoices] = useState<KnownChoices>({});
+  const begin = (c: Child, chosen: KnownChoices) =>
+    updateProgress((s) => applyKnownLetters(updateSettings(s, { child: c }), chosen, todayISO()));
 
   return (
     <div className="screen welcome">
@@ -26,7 +28,13 @@ export function Welcome() {
       <div className="page welcome__page">
         <Helper id={helper} mood="happy" size={130} className="welcome__helper" />
         {child && step === 'letters' ? (
-          <KnownLetters child={child} onBack={() => setStep('name')} onDone={(choices) => begin(child, choices)} />
+          <KnownLetters
+            child={child}
+            choices={choices}
+            onChoose={(stageId, c) => setChoices((prev) => ({ ...prev, [stageId]: c }))}
+            onBack={() => setStep('name')}
+            onDone={(chosen) => begin(child, chosen)}
+          />
         ) : (
           <>
             <h2 className="welcome__title">Давайте познайомимось!</h2>
@@ -66,9 +74,20 @@ const CHOICES: [KnownChoice, string][] = [
  * Ті самі правила, що й у розділі «Для дорослих»: «Знає впевнено» пропускає всі місії букви,
  * «Знає» - лише день знайомства з нею.
  */
-function KnownLetters({ child, onBack, onDone }: { child: Child; onBack: () => void; onDone: (choices: KnownChoices) => void }) {
+function KnownLetters({
+  child,
+  choices,
+  onChoose,
+  onBack,
+  onDone,
+}: {
+  child: Child;
+  choices: KnownChoices;
+  onChoose: (stageId: string, choice: KnownChoice) => void;
+  onBack: () => void;
+  onDone: (choices: KnownChoices) => void;
+}) {
   const t = (text: string) => personalize(text, child);
-  const [choices, setChoices] = useState<KnownChoices>({});
   return (
     <div className="known-letters">
       <h2 className="welcome__title">{t('Які букви {name} вже знає?')}</h2>
@@ -95,7 +114,7 @@ function KnownLetters({ child, onBack, onDone }: { child: Child; onBack: () => v
                     role="radio"
                     aria-checked={value === c}
                     className={`segmented__item segmented__item--${c === 'unknown' ? 'learning' : c} ${value === c ? 'segmented__item--active' : ''}`}
-                    onClick={() => setChoices((prev) => ({ ...prev, [stage.id]: c }))}
+                    onClick={() => onChoose(stage.id, c)}
                   >
                     {label}
                   </button>

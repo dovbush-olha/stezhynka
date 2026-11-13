@@ -7,10 +7,12 @@ interface Props {
   onSave: (child: Child) => void;
   /** Кнопка внизу на всю ширину (знайомство) чи компактна (налаштування). */
   big?: boolean;
+  /** Кнопка неактивна, доки дорослий нічого не змінив: для правки вже збереженого імені. */
+  requireChange?: boolean;
 }
 
 /** Ім'я дитини, хлопчик чи дівчинка і як до неї звертатися. */
-export function ChildForm({ initial, submitLabel, onSave, big = false }: Props) {
+export function ChildForm({ initial, submitLabel, onSave, big = false, requireChange = false }: Props) {
   const id = useId();
   const [name, setName] = useState(initial?.name ?? '');
   const [gender, setGender] = useState<Gender | null>(initial?.gender ?? null);
@@ -32,7 +34,9 @@ export function ChildForm({ initial, submitLabel, onSave, big = false }: Props) 
   const cleanVocative = tidyName(vocative) || cleanName;
   const ready = cleanName !== '' && gender !== null;
   const unchanged =
-    initial !== null && initial.name === cleanName && initial.gender === gender && initial.vocative === cleanVocative;
+    requireChange &&
+    initial !== null &&
+    initial.name === cleanName && initial.gender === gender && initial.vocative === cleanVocative;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
