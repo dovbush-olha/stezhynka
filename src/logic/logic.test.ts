@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { NOT_YET_STUDIED, isReadableWith, type LetterId } from '../content/alphabet';
 import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/types';
 import { validateExercise, validateMission } from '../content/validate';
-import { COURSE, COURSE_MISSIONS } from '../content/course';
+import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
 import { adviseNextLetter, missionAvailability, recommend } from './availability';
-import { MAX_WARM_UP, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
+import { MAX_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
 import { dueItems, practisedItems, textsOf } from './review';
 import { adaptForSolo, canPickPicture, preferRecordedVoice } from './solo';
 import { closeness } from './similar';
@@ -17,10 +17,13 @@ import {
   lockLetter,
   logLetter,
   normalizeState,
+  setLetterStatus,
+  suggestStatus,
   unlockLetter,
   updateSettings,
   type ProgressState,
 } from './progress';
+import { applyKnownLetters, canRedoStage, letterQuestion, redoPreview, redoStage, skipMissions, skipOffer } from './path';
 import { isLastingMicFailure, readingCheck, readingCheckInExercise } from './readingCheck';
 import { newestFirst, overflow } from './readingQueue';
 import { addDays, nextReview } from './srs';
@@ -666,5 +669,303 @@ describe('звук букви: згадати, а не лише впізнати
     expect(ok.letters.Л).toMatchObject({ seen: 1, firstTry: 1, box: 2 });
     const no = logLetter(ok, { id: 'Л', firstTry: false }, TODAY);
     expect(no.letters.Л).toMatchObject({ seen: 2, firstTry: 1, box: 1, due: TODAY });
+  });
+});
+
+describe('шлях букви: дорослий пропускає знайоме і повертає важке', () => {
+  const ids = (stageId: string) => stageMissions(findStage(stageId)!).map((m) => m.id);
+  /** Яку місію дитячий екран веде проходити наступною (і тоді, коли спершу пропонує повторення). */
+  const upNext = (s: ProgressState) => {
+    const r = recommend(s);
+    return r.kind === 'mission' ? r.mission.id : r.reason === 'review' ? r.nextMission.id : r.reason;
+  };
+  const completeAll = (s: ProgressState, list: string[]) => list.reduce((acc, id) => complete(acc, id), s);
+  /** Голосні й Л пройдено - М відкрилася сама. */
+  const reachedM = () => completeAll(createInitialState(TODAY), [...ids('vowels'), ...ids('l')]);
+
+  it('«Знає впевнено» пропонує пропустити всі непройдені місії букви; після пропуску - наступна буква й її перша місія', () => {
+    let s = complete(reachedM(), 'm-1');
+    s = setLetterStatus(s, 'М', 'confident', TODAY);
+    const offer = skipOffer(s, 'М');
+    expect(offer?.missions).toEqual(ids('m').slice(1));
+    s = skipMissions(s, offer!.missions, TODAY);
+    expect(s.unlocked).toContain('С');
+    expect(upNext(s)).toBe(ids('s')[0]);
+    for (const id of ids('m').slice(1)) expect(missionAvailability(s, findMission(id)!), id).toBe('skipped');
+  });
+
+  it('«Знає» пропонує скорочений шлях: без дня знайомства, а склади, слова й фрази лишаються', () => {
+    let s = setLetterStatus(reachedM(), 'М', 'knows', TODAY);
+    const intro = findStage('m')!.days[0].missions.map((m) => m.id);
+    expect(skipOffer(s, 'М')).toMatchObject({ kind: 'intro', missions: intro });
+    s = skipMissions(s, intro, TODAY);
+    expect(upNext(s)).toBe(findStage('m')!.days[1].missions[0].id);
+  });
+
+  it('пропуск не пропонується, коли пропускати нічого', () => {
+    let s = reachedM();
+    // День знайомства з М уже пройдено.
+    s = completeAll(s, findStage('m')!.days[0].missions.map((m) => m.id));
+    expect(skipOffer(setLetterStatus(s, 'М', 'knows', TODAY), 'М')).toBeUndefined();
+    // У голосних один день - скороченого шляху немає.
+    expect(skipOffer(setLetterStatus(createInitialState(TODAY), 'А', 'knows', TODAY), 'А')).toBeUndefined();
+    // Етап голосних пропускаємо, лише коли впевнено знайомі всі голосні.
+    let v = setLetterStatus(createInitialState(TODAY), 'А', 'confident', TODAY);
+    expect(skipOffer(v, 'А')).toBeUndefined();
+    for (const l of findStage('vowels')!.letters) v = setLetterStatus(v, l, 'confident', TODAY);
+    expect(skipOffer(v, 'А')).toMatchObject({ kind: 'all', missions: ids('vowels') });
+  });
+
+  it('за пропущену місію наліпки й зірочок немає, а коли дитина її пройде - наліпка з’являється', () => {
+    let s = setLetterStatus(reachedM(), 'М', 'confident', TODAY);
+    const before = { stickers: s.stickers, stars: s.stars };
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    expect({ stickers: s.stickers, stars: s.stars }).toEqual(before);
+    const m2 = findMission('m-2')!;
+    s = completeMission(s, { missionId: m2.id, sticker: m2.sticker, scored: 5, hinted: 0, readAlone: 0, readTotal: 0 }, TODAY);
+    expect(s.stickers).toContain(m2.sticker);
+    expect(missionAvailability(s, m2)).toBe('done');
+  });
+
+  it('зниження статусу пропуску не скасовує', () => {
+    let s = setLetterStatus(reachedM(), 'М', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    s = setLetterStatus(s, 'М', 'learning', TODAY);
+    expect(missionAvailability(s, findMission('m-1')!)).toBe('skipped');
+    expect(upNext(s)).toBe(ids('s')[0]);
+  });
+
+  it('порада «повторити місію» не стосується пропущеної місії', () => {
+    // Остання місія Л далася важко, але день знайомства з М дорослий пропустив - повторювати нема чого.
+    let s = createInitialState(TODAY);
+    s = completeAll(s, [...ids('vowels'), ...ids('l').slice(0, -1)]);
+    s = complete(s, ids('l').at(-1)!, 4, 6);
+    expect(recommend(s)).toMatchObject({ reason: 'repeat' });
+    s = setLetterStatus(s, 'М', 'knows', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    expect(recommend(s)).not.toMatchObject({ reason: 'repeat' });
+    expect(upNext(s)).toBe(findStage('m')!.days[1].missions[0].id);
+  });
+
+  /** Пройдено голосні, Л, М і перша місія С; С відкрилася сама. */
+  const reachedS = () => complete(completeAll(reachedM(), ids('m')), 's-1');
+
+  it('«Пройти букву ще раз»: перша місія букви знову наступна, наступні букви сховані, а зароблене й статистика лишаються', () => {
+    let s = applyExerciseResult(reachedS(), { hinted: false, letters: [{ id: 'М', firstTry: true }], reading: { text: 'ма', alone: true } }, TODAY);
+    s = setLetterStatus(s, 'М', 'knows', TODAY);
+    const before = s;
+    s = redoStage(s, 'm', TODAY);
+    expect(upNext(s)).toBe('m-1');
+    expect(s.unlocked).toContain('М');
+    expect(s.unlocked).not.toContain('С');
+    expect(s.letters.М?.status).toBe('learning');
+    expect(missionAvailability(s, findMission('s-1')!)).toBe('locked');
+    expect(s.stars).toBe(before.stars);
+    expect(s.stickers).toEqual(before.stickers);
+    expect(s.missions).toEqual(before.missions);
+    expect(s.reading).toEqual(before.reading);
+    expect(s.letters.М).toMatchObject({ seen: before.letters.М!.seen, firstTry: before.letters.М!.firstTry, recent: before.letters.М!.recent });
+    // Збереження читається так само.
+    expect(upNext(normalizeState(JSON.parse(JSON.stringify(s)), TODAY))).toBe('m-1');
+  });
+
+  it('після повторного проходження букви наступна відкривається сама, і її місії проходяться наново', () => {
+    let s = redoStage(reachedS(), 'm', TODAY);
+    s = completeAll(s, ids('m'));
+    expect(s.unlocked).toContain('С');
+    expect(upNext(s)).toBe('s-1');
+    expect(missionAvailability(s, findMission('s-1')!)).toBe('available');
+  });
+
+  it('наступна буква «Знає впевнено» після повернення не ховається, і її пропуски лишаються', () => {
+    let s = setLetterStatus(reachedS(), 'С', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'С')!.missions, TODAY);
+    expect(s.unlocked).toContain('Н');
+    s = redoStage(s, 'm', TODAY);
+    expect(s.unlocked).toContain('С');
+    expect(s.unlocked).not.toContain('Н');
+    expect(missionAvailability(s, findMission('s-2')!)).toBe('skipped');
+    // s-1 пройдено, тож вона в черзі знову; решта С - пропущені.
+    s = completeAll(s, [...ids('m'), 's-1']);
+    expect(upNext(s)).toBe(ids('n')[0]);
+    expect(s.unlocked).toContain('Н');
+  });
+
+  it('повернення знімає пропуски самої букви', () => {
+    let s = setLetterStatus(reachedM(), 'М', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    s = redoStage(s, 'm', TODAY);
+    expect(missionAvailability(s, findMission('m-1')!)).toBe('available');
+    expect(missionAvailability(s, findMission('m-2')!)).toBe('locked');
+  });
+
+  it('«Пройти голосні ще раз» - одна дія на всі голосні; їхні статуси не змінюються', () => {
+    let s = setLetterStatus(reachedS(), 'А', 'knows', TODAY);
+    s = redoStage(s, 'vowels', TODAY);
+    expect(upNext(s)).toBe('vowels-1');
+    expect(s.letters.А?.status).toBe('knows');
+    expect(s.unlocked).not.toContain('М');
+  });
+
+  it('букви поза планом, відкриті дорослим, повернення не чіпає', () => {
+    let s = unlockLetter(reachedS(), 'Т', TODAY);
+    s = redoStage(s, 'm', TODAY);
+    expect(s.unlocked).toContain('Т');
+  });
+
+  it('дія «ще раз» доступна, коли в букві є пройдені або пропущені місії', () => {
+    expect(canRedoStage(createInitialState(TODAY), findStage('m')!)).toBe(false);
+    expect(canRedoStage(reachedS(), findStage('m')!)).toBe(true);
+    let s = setLetterStatus(reachedM(), 'М', 'knows', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    expect(canRedoStage(s, findStage('m')!)).toBe(true);
+    expect(canRedoStage(redoStage(reachedS(), 'm', TODAY), findStage('m')!)).toBe(false);
+  });
+
+  it('перед поверненням дорослий бачить, скільки місій повернеться і які букви сховаються', () => {
+    let s = setLetterStatus(reachedS(), 'С', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'С')!.missions, TODAY);
+    s = unlockLetter(s, 'Н', TODAY);
+    expect(redoPreview(s, 'l')).toEqual({ missions: ids('l').length + ids('m').length + 1, hides: ['М', 'Н'] });
+  });
+
+  /** Літери-вправи: де дитина впізнає букву чи згадує її звук. */
+  const letterTargets = (exercises: Exercise[]) =>
+    exercises.flatMap((e) => (e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : []));
+  /** Голосні повторено сьогодні - чекає повторення лише Л. */
+  const onlyLDue = () => {
+    let s = createInitialState(TODAY);
+    for (const l of findStage('vowels')!.letters) s = logLetter(s, { id: l, firstTry: true }, TODAY);
+    return s;
+  };
+
+  it('розминка не бере вправи на букву «Знає впевнено», а склади й слова, яким час повторення, бере', () => {
+    // Місія з Л, де сама місія вправи на Л не має - інакше розминка її й так не бере.
+    const mission = COURSE_MISSIONS.find((m) => !m.newLetters && m.requires.includes('Л') && !letterTargets(m.exercises).includes('Л'))!;
+    const syllable = availableSyllables(mission.requires).find((t) => !textsOf(mission.exercises).has(t))!;
+    // Букви місії відкриті й щойно повторені - чекає повторення лише Л.
+    let s = onlyLDue();
+    for (const l of mission.requires.filter((l) => !s.unlocked.includes(l))) s = logLetter(unlockLetter(s, l, TODAY), { id: l, firstTry: true }, TODAY);
+    s = applyExerciseResult(s, { hinted: true, items: [{ text: syllable, firstTry: false }] }, TODAY);
+    expect(letterTargets(warmUp(s, mission, TODAY, makeRng('w')))).toEqual(['Л']);
+    s = setLetterStatus(s, 'Л', 'confident', TODAY);
+    for (let seed = 0; seed < 20; seed++) {
+      const warm = warmUp(s, mission, TODAY, makeRng(`w-${seed}`));
+      expect(letterTargets(warm), `seed ${seed}`).toEqual([]);
+      expect(textsOf(warm).has(syllable), `seed ${seed}`).toBe(true);
+    }
+  });
+
+  it('у «Повторенні в лісі» впевнено знайома буква - лише коли іншим буквам повторення не потрібне', () => {
+    let s = setLetterStatus(onlyLDue(), 'Л', 'confident', TODAY);
+    // Самій лише Л час повторення - тоді й вона годиться.
+    expect(letterTargets(buildPracticeMission(s, TODAY, makeRng('p')).exercises)).toContain('Л');
+    s = logLetter(s, { id: 'О', firstTry: false }, TODAY);
+    for (let seed = 0; seed < 20; seed++) {
+      const targets = letterTargets(buildPracticeMission(s, TODAY, makeRng(`p-${seed}`)).exercises);
+      expect(targets, `seed ${seed}`).toContain('О');
+      expect(targets, `seed ${seed}`).not.toContain('Л');
+    }
+  });
+
+  it('порада щодо статусу ніколи не пропонує «Знає впевнено» і не радить знизити його до «Знає»', () => {
+    let s = createInitialState(TODAY);
+    for (let i = 0; i < 6; i++) s = logLetter(s, { id: 'Л', firstTry: true }, TODAY);
+    expect(suggestStatus(s.letters.Л)).toBe('knows');
+    expect(suggestStatus(setLetterStatus(s, 'Л', 'confident', TODAY).letters.Л)).toBeUndefined();
+    for (let i = 0; i < 6; i++) s = logLetter(s, { id: 'Л', firstTry: false }, TODAY);
+    expect(suggestStatus(setLetterStatus(s, 'Л', 'confident', TODAY).letters.Л)).toBe('learning');
+  });
+
+  it('з «Нову букву відкриває дорослий» буква не відкривається сама, дитині - «Повторення в лісі», дорослому - питання', () => {
+    let s = updateSettings(createInitialState(TODAY), { adultOpensLetters: true });
+    s = completeAll(s, [...ids('vowels'), ...ids('l')]);
+    expect(s.unlocked).not.toContain('М');
+    expect(recommend(s)).toMatchObject({ kind: 'practice', reason: 'needs-letters', letters: ['М'] });
+    expect(letterQuestion(s)).toMatchObject({ letters: ['М'], previous: { id: 'l' } });
+    // Без налаштування питання немає: буква відкрилася сама.
+    expect(letterQuestion(reachedM())).toBeUndefined();
+    // Відповідь «Так, відкрити».
+    s = unlockLetter(s, 'М', TODAY);
+    expect(letterQuestion(s)).toBeUndefined();
+    expect(upNext(s)).toBe('m-1');
+  });
+
+  it('з «Нову букву відкриває дорослий» сховані поверненням букви теж чекають дорослого', () => {
+    let s = updateSettings(redoStage(reachedS(), 'm', TODAY), { adultOpensLetters: true });
+    s = completeAll(s, ids('m'));
+    expect(s.unlocked).not.toContain('С');
+    expect(letterQuestion(s)).toMatchObject({ letters: ['С'], previous: { id: 'm' } });
+  });
+
+  it('вибір при знайомстві дає той самий шлях, що й відповідні дії дорослого', () => {
+    const chosen = applyKnownLetters(createInitialState(TODAY), { vowels: 'confident', l: 'knows', m: 'confident', s: 'unknown' }, TODAY);
+
+    let byHand = createInitialState(TODAY);
+    for (const l of findStage('vowels')!.letters) byHand = setLetterStatus(byHand, l, 'confident', TODAY);
+    byHand = skipMissions(byHand, skipOffer(byHand, 'А')!.missions, TODAY);
+    byHand = setLetterStatus(byHand, 'Л', 'knows', TODAY);
+    byHand = skipMissions(byHand, skipOffer(byHand, 'Л')!.missions, TODAY);
+    byHand = setLetterStatus(unlockLetter(byHand, 'М', TODAY), 'М', 'confident', TODAY);
+    byHand = skipMissions(byHand, skipOffer(byHand, 'М')!.missions, TODAY);
+
+    const path = (s: ProgressState) => ({
+      next: upNext(s),
+      unlocked: s.unlocked,
+      statuses: Object.fromEntries(s.unlocked.map((l) => [l, s.letters[l]?.status])),
+      missions: COURSE_MISSIONS.map((m) => missionAvailability(s, m)),
+    });
+    expect(path(chosen)).toEqual(path(byHand));
+    expect(upNext(chosen)).toBe(findStage('l')!.days[1].missions[0].id);
+  });
+
+  it('при знайомстві «Знає» для голосних лише ставить статус, а «Ще не знає» нічого не змінює', () => {
+    const fresh = createInitialState(TODAY);
+    const s = applyKnownLetters(fresh, { vowels: 'knows', l: 'unknown' }, TODAY);
+    for (const l of findStage('vowels')!.letters) expect(s.letters[l]?.status).toBe('knows');
+    expect(s.letters.Л?.status).toBe(fresh.letters.Л?.status);
+    expect(upNext(s)).toBe('vowels-1');
+    expect(COURSE_MISSIONS.some((m) => missionAvailability(s, m) === 'skipped')).toBe(false);
+  });
+
+  it('пропуск місії, яку дитина вже проходила до повернення, робить її знову пройденою, а не пропущеною', () => {
+    let s = redoStage(reachedS(), 'm', TODAY);
+    s = setLetterStatus(s, 'М', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    for (const id of ids('m')) expect(missionAvailability(s, findMission(id)!), id).toBe('done');
+    expect(s.unlocked).toContain('С');
+  });
+
+  it('старе збереження читається як «нічого не пропущено, нічого не повернуто, букви відкриваються самі»', () => {
+    const now = reachedS();
+    const old = JSON.parse(JSON.stringify(now));
+    delete old.skipped;
+    delete old.redo;
+    delete old.settings.adultOpensLetters;
+    const s = normalizeState(old, TODAY);
+    expect(s.settings.adultOpensLetters).toBe(false);
+    expect(s.missions).toEqual(now.missions);
+    expect(s.unlocked).toEqual(now.unlocked);
+    expect(COURSE_MISSIONS.map((m) => missionAvailability(s, m))).toEqual(COURSE_MISSIONS.map((m) => missionAvailability(now, m)));
+    expect(upNext(s)).toBe(upNext(now));
+  });
+
+  it('пошкоджені нові поля відкидаються, а старі ідентифікатори місій переносяться на нинішні', () => {
+    const raw = JSON.parse(JSON.stringify(reachedM()));
+    raw.skipped = ['w1d4m1', 42, 'нема-такої', 'm-2', 'm-2'];
+    raw.redo = 'сміття';
+    raw.settings.adultOpensLetters = 'так';
+    raw.letters.М = { ...raw.letters.М, status: 'дуже-дуже' };
+    const s = normalizeState(raw, TODAY);
+    expect(COURSE_MISSIONS.filter((m) => missionAvailability(s, m) === 'skipped').map((m) => m.id)).toEqual(['m-1', 'm-2']);
+    // Пошкоджене «пройти ще раз» нічого не повертає: пройдене лишається пройденим.
+    expect([...ids('vowels'), ...ids('l')].map((id) => missionAvailability(s, findMission(id)!))).not.toContain('available');
+    expect(s.settings.adultOpensLetters).toBe(false);
+    expect(s.letters.М?.status).toBe('learning');
+    expect(upNext(s)).toBe('m-3');
+    // Пропуски, повернення й налаштування переживають збереження.
+    const again = normalizeState(JSON.parse(JSON.stringify(updateSettings(redoStage(s, 'l', TODAY), { adultOpensLetters: true }))), TODAY);
+    expect(again.settings.adultOpensLetters).toBe(true);
+    expect(upNext(again)).toBe('l-1');
   });
 });

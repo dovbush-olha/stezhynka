@@ -18,7 +18,8 @@ interface Props {
   onParent: () => void;
 }
 
-const STATUS_ICON = { done: '⭐', available: '🌱', locked: '🔒', 'needs-letters': '🔒' } as const;
+// Пропущена місія - як пройдена, але зірочку дитина ще не заробила.
+const STATUS_ICON = { done: '⭐', skipped: '☆', available: '🌱', locked: '🔒', 'needs-letters': '🔒' } as const;
 
 export function Home({ onStart, onParent }: Props) {
   const progress = useProgress();
@@ -32,9 +33,13 @@ export function Home({ onStart, onParent }: Props) {
   const [gate, setGate] = useState(false);
   const recommendedId = rec.kind === 'mission' ? rec.mission.id : undefined;
 
+  /** Зароблене лишається: місію, повернуту дорослим у чергу, можна й далі пограти, якщо її букви відкриті. */
+  const earned = (m: Mission) => Boolean(progress.missions[m.id]?.completions);
+
   const tapMission = (m: Mission) => {
     const av = missionAvailability(progress, m);
-    if (av === 'done' || av === 'available') return onStart(m);
+    if (av === 'done' || av === 'skipped' || av === 'available') return onStart(m);
+    if (earned(m) && !missingLetters(progress, m).length) return onStart(m);
     if (av === 'locked') return setMessage('Ця стежка ще попереду. Спершу пройдемо попередню місію!');
     setMessage('Тут живе нова буква. Її відкриє дорослий, коли прийде час.');
   };
@@ -127,7 +132,9 @@ export function Home({ onStart, onParent }: Props) {
         <ol className="map__days">
           {COURSE.map((day) => {
             const states = day.missions.map((m) => missionAvailability(progress, m));
-            const dayDone = states.every((s) => s === 'done');
+            // Зірочка дня - за пройдене дитиною: пропущені дорослим місії не рахуються,
+            // а повернуті «Пройти букву ще раз» - рахуються, бо зароблене не забирається.
+            const dayDone = day.missions.every(earned);
             // Буква, яку сховав дорослий. Майбутні дні просто чекають своєї черги.
             const waiting = states[0] === 'needs-letters' ? missingLetters(progress, day.missions[0]) : [];
             return (
@@ -145,7 +152,8 @@ export function Home({ onStart, onParent }: Props) {
                 <span className="map-day__label">День {day.day}</span>
                 <span className="map-day__missions">
                   {day.missions.map((m, i) => {
-                    const st = states[i];
+                    // Повернута в чергу місія лишається зірочкою, як і була: зароблене не тьмяніє.
+                    const st = earned(m) && states[i] !== 'available' ? 'done' : states[i];
                     return (
                       <button
                         key={m.id}
@@ -155,7 +163,7 @@ export function Home({ onStart, onParent }: Props) {
                         aria-label={`День ${day.day}, місія ${m.order}: ${m.title}`}
                         title={m.title}
                       >
-                        <span aria-hidden="true">{STATUS_ICON[st]}</span>
+                        <span aria-hidden="true">{earned(m) ? STATUS_ICON.done : STATUS_ICON[st]}</span>
                       </button>
                     );
                   })}

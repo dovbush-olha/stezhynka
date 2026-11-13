@@ -3,8 +3,8 @@ import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, UKRAINIAN_ALPH
 import { personalize } from '../content/child';
 import { BackupPanel } from '../components/Backup';
 import { ChildForm } from '../components/ChildForm';
-import type { Mission } from '../content/types';
-import { COURSE, COURSE_MISSIONS } from '../content/course';
+import type { Mission, Stage } from '../content/types';
+import { COURSE, COURSE_MISSIONS, COURSE_STAGES, isVowelStage, stageOfLetter } from '../content/course';
 import { clearReadings, playReading, removeReading, usePendingReadings } from '../audio/readings';
 import {
   canRecord,
@@ -25,7 +25,9 @@ import { ColoredText, Modal } from '../components/ui';
 import { adviseNextLetter, missingLetters, missionAvailability } from '../logic/availability';
 import { availableSyllables } from '../logic/generate';
 import { sayKey, voiceItems } from '../logic/voice';
+import { canRedoStage, letterQuestion, redoPreview, redoStage, skipMissions, skipOffer, type SkipOffer } from '../logic/path';
 import {
+  LETTER_STATUSES,
   LETTER_STATUS_LABEL,
   lockLetter,
   logLetter,
@@ -34,11 +36,12 @@ import {
   suggestStatus,
   todayISO,
   unlockLetter,
+  missionState,
   updateSettings,
   type LetterStatus,
   type Settings,
 } from '../logic/progress';
-import { resetProgress, updateProgress, useChild, useProgress } from '../store/progressStore';
+import { getProgress, resetProgress, updateProgress, useChild, useProgress } from '../store/progressStore';
 import { plural } from '../components/text';
 import type { PendingReading } from '../logic/readingQueue';
 
@@ -96,17 +99,36 @@ export function Parent({ onBack, onStart }: Props) {
   );
 }
 
-const STATUSES: LetterStatus[] = ['knows', 'sometimes', 'learning'];
+type LettersDialog =
+  | { kind: 'unlock' | 'lock'; letter: LetterId }
+  | { kind: 'skip'; offer: SkipOffer }
+  | { kind: 'redo'; stage: Stage };
+
+/** Етап у родовому відмінку: «місії голосних», «місії букви М». */
+function stageGenitive(stage: Stage): string {
+  return isVowelStage(stage) ? 'голосних' : `букви ${stage.letters.join(', ')}`;
+}
 
 function LettersTab() {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const advice = adviseNextLetter(progress);
-  const [confirm, setConfirm] = useState<{ letter: LetterId; action: 'unlock' | 'lock' } | null>(null);
+  const question = letterQuestion(progress);
+  const [dialog, setDialog] = useState<LettersDialog | null>(null);
+  const close = () => setDialog(null);
   const locked = UKRAINIAN_ALPHABET.filter((l) => !progress.unlocked.includes(l));
   const lockedPlanned = PLANNED_LETTERS.filter((l) => locked.includes(l));
   const lockedOther = locked.filter((l) => !PLANNED_LETTERS.includes(l));
+  const vowelStage = COURSE_STAGES.find(isVowelStage);
+
+  /** Статус ставить дорослий; якщо після нього є що пропустити - питаємо, а не пропускаємо мовчки. */
+  const chooseStatus = (letter: LetterId, status: LetterStatus) => {
+    if (progress.letters[letter]?.status === status) return;
+    updateProgress((st) => setLetterStatus(st, letter, status, todayISO()));
+    const offer = skipOffer(getProgress(), letter);
+    if (offer) setDialog({ kind: 'skip', offer });
+  };
 
   return (
     <>
@@ -114,12 +136,15 @@ function LettersTab() {
         <h2 className="panel__title">Букви, які {child.name} вже вчить</h2>
         <p className="panel__hint">
           Позначте, як {child.name} знає кожну букву. Програма лише підказує на основі останніх відповідей - рішення за вами.
+          «Знає впевнено» ставите лише ви: така буква не трапляється в розминці, а її місії можна пропустити.
         </p>
         <div className="letter-cards">
           {progress.unlocked.map((l) => {
             const lp = progress.letters[l];
             const suggestion = suggestStatus(lp);
             const status = lp?.status ?? 'learning';
+            const stage = stageOfLetter(l);
+            const redo = stage && stage !== vowelStage && canRedoStage(progress, stage) ? stage : undefined;
             return (
               <article key={l} className={`letter-card letter-card--${status}`}>
                 <div className="letter-card__head">
@@ -129,15 +154,15 @@ function LettersTab() {
                   </span>
                   <span className="letter-card__sound">{LETTERS[l].sound}</span>
                 </div>
-                <div className="segmented" role="radiogroup" aria-label={`Статус букви ${l}`}>
-                  {STATUSES.map((s) => (
+                <div className="segmented segmented--grid" role="radiogroup" aria-label={`Статус букви ${l}`}>
+                  {LETTER_STATUSES.map((s) => (
                     <button
                       key={s}
                       type="button"
                       role="radio"
                       aria-checked={status === s}
                       className={`segmented__item segmented__item--${s} ${status === s ? 'segmented__item--active' : ''}`}
-                      onClick={() => updateProgress((st) => setLetterStatus(st, l, s, todayISO()))}
+                      onClick={() => chooseStatus(l, s)}
                     >
                       {LETTER_STATUS_LABEL[s]}
                     </button>
@@ -149,28 +174,64 @@ function LettersTab() {
                     : 'Ще не траплялася у вправах'}
                 </p>
                 {suggestion && suggestion !== status && (
-                  <button
-                    type="button"
-                    className="suggestion"
-                    onClick={() => updateProgress((st) => setLetterStatus(st, l, suggestion, todayISO()))}
-                  >
+                  <button type="button" className="suggestion" onClick={() => chooseStatus(l, suggestion)}>
                     Схоже на «{LETTER_STATUS_LABEL[suggestion]}» - позначити?
                   </button>
                 )}
-                {!BASE_LETTERS.includes(l) && (
-                  <button type="button" className="text-button text-button--small" onClick={() => setConfirm({ letter: l, action: 'lock' })}>
-                    Сховати букву
-                  </button>
+                {(redo || !BASE_LETTERS.includes(l)) && (
+                  <div className="letter-card__actions">
+                    {redo && (
+                      <button type="button" className="text-button text-button--small" onClick={() => setDialog({ kind: 'redo', stage: redo })}>
+                        ↺ Пройти букву ще раз
+                      </button>
+                    )}
+                    {!BASE_LETTERS.includes(l) && (
+                      <button type="button" className="text-button text-button--small" onClick={() => setDialog({ kind: 'lock', letter: l })}>
+                        Сховати букву
+                      </button>
+                    )}
+                  </div>
                 )}
               </article>
             );
           })}
         </div>
+        {vowelStage && canRedoStage(progress, vowelStage) && (
+          <div className="vowels-redo">
+            <span>Голосні мають спільні місії, тож і повертаються до них разом.</span>
+            <button type="button" className="text-button text-button--small" onClick={() => setDialog({ kind: 'redo', stage: vowelStage })}>
+              ↺ Пройти голосні ще раз
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="panel">
         <h2 className="panel__title">Додати наступну букву</h2>
-        {advice ? (
+        {question ? (
+          <div className="advice advice--question">
+            <span className="advice__icon" aria-hidden="true">
+              🤔
+            </span>
+            <div className="advice__body">
+              <p>
+                {t(`{name} {дійшла|дійшов} до кінця місій ${stageGenitive(question.previous)}. Чи {вона|він} вже ${question.previous.letters.length > 1 ? 'знає їх' : 'знає цю букву'}?`)}
+              </p>
+              <div className="advice__actions">
+                <button
+                  type="button"
+                  className="big-button big-button--small"
+                  onClick={() => updateProgress((s) => question.letters.reduce((acc, l) => unlockLetter(acc, l, todayISO()), s))}
+                >
+                  Так, відкрити {question.letters.join(', ')}
+                </button>
+                <button type="button" className="text-button" onClick={() => setDialog({ kind: 'redo', stage: question.previous })}>
+                  Ще повчимо
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : advice ? (
           <div className={`advice ${advice.ready ? 'advice--ready' : ''}`}>
             <span className="advice__icon" aria-hidden="true">
               {advice.ready ? '🌟' : '🌱'}
@@ -185,7 +246,7 @@ function LettersTab() {
             <h3 className="panel__subtitle">Букви з місіями</h3>
             <div className="unlock-grid">
               {lockedPlanned.map((l) => (
-                <button key={l} type="button" className="unlock-tile unlock-tile--planned" onClick={() => setConfirm({ letter: l, action: 'unlock' })}>
+                <button key={l} type="button" className="unlock-tile unlock-tile--planned" onClick={() => setDialog({ kind: 'unlock', letter: l })}>
                   <span className="unlock-tile__glyph">{l}</span>
                   <span className="unlock-tile__label">{l === advice?.letter ? 'наступна' : 'з місіями'}</span>
                 </button>
@@ -203,7 +264,7 @@ function LettersTab() {
               key={l}
               type="button"
               className={`unlock-tile ${NOT_YET_STUDIED.includes(l) ? 'unlock-tile--later' : ''}`}
-              onClick={() => setConfirm({ letter: l, action: 'unlock' })}
+              onClick={() => setDialog({ kind: 'unlock', letter: l })}
             >
               <span className="unlock-tile__glyph">{l}</span>
               {NOT_YET_STUDIED.includes(l) && <span className="unlock-tile__label">ще не вчили</span>}
@@ -212,36 +273,39 @@ function LettersTab() {
         </div>
       </section>
 
-      {confirm && (
+      {(dialog?.kind === 'unlock' || dialog?.kind === 'lock') && (
         <Modal
-          title={confirm.action === 'unlock' ? `Відкрити букву ${confirm.letter}?` : `Сховати букву ${confirm.letter}?`}
-          onClose={() => setConfirm(null)}
+          title={dialog.kind === 'unlock' ? `Відкрити букву ${dialog.letter}?` : `Сховати букву ${dialog.letter}?`}
+          onClose={close}
           actions={
             <>
-              <button type="button" className="text-button" onClick={() => setConfirm(null)}>
+              <button type="button" className="text-button" onClick={close}>
                 Скасувати
               </button>
               <button
                 type="button"
                 className="big-button big-button--small"
                 onClick={() => {
-                  const { letter, action } = confirm;
-                  updateProgress((s) => (action === 'unlock' ? unlockLetter(s, letter, todayISO()) : lockLetter(s, letter)));
-                  setConfirm(null);
+                  const { letter, kind } = dialog;
+                  updateProgress((s) => (kind === 'unlock' ? unlockLetter(s, letter, todayISO()) : lockLetter(s, letter)));
+                  close();
                 }}
               >
-                {confirm.action === 'unlock' ? 'Відкрити' : 'Сховати'}
+                {dialog.kind === 'unlock' ? 'Відкрити' : 'Сховати'}
               </button>
             </>
           }
         >
-          {confirm.action === 'unlock' ? (
+          {dialog.kind === 'unlock' ? (
             <>
               <p>
-                Звук {LETTERS[confirm.letter].sound}: {LETTERS[confirm.letter].say}. Буква з’явиться у вправах, а нові місії з нею
+                Звук {LETTERS[dialog.letter].sound}: {LETTERS[dialog.letter].say}. Буква з’явиться у вправах, а нові місії з нею
                 стануть доступними.
               </p>
-              {NOT_YET_STUDIED.includes(confirm.letter) && (
+              {PLANNED_LETTERS.includes(dialog.letter) && (
+                <p>Якщо {child.name} вже знає цю букву, позначте її потім «Знає» або «Знає впевнено» - і її місії можна буде пропустити.</p>
+              )}
+              {NOT_YET_STUDIED.includes(dialog.letter) && (
                 <p className="warning">Цю букву в школі ще не вивчали. {t('Відкривайте, лише якщо {name} вже з нею {знайома|знайомий}.')}</p>
               )}
             </>
@@ -252,7 +316,103 @@ function LettersTab() {
           )}
         </Modal>
       )}
+
+      {dialog?.kind === 'skip' && <SkipDialog offer={dialog.offer} onClose={close} />}
+      {dialog?.kind === 'redo' && <RedoDialog stage={dialog.stage} onClose={close} />}
     </>
+  );
+}
+
+/** Пропуск місій за статусом - лише після підтвердження: від випадкового дотику місії не зникають. */
+function SkipDialog({ offer, onClose }: { offer: SkipOffer; onClose: () => void }) {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
+  const n = offer.missions.length;
+  const missions = `${n} ${plural(n, 'місію', 'місії', 'місій')}`;
+  return (
+    <Modal
+      title={offer.kind === 'all' ? `Пропустити місії ${stageGenitive(offer.stage)}?` : 'Піти скороченим шляхом?'}
+      onClose={onClose}
+      actions={
+        <>
+          <button type="button" className="text-button" onClick={onClose}>
+            Ні, лишити місії
+          </button>
+          <button
+            type="button"
+            className="big-button big-button--small"
+            onClick={() => {
+              updateProgress((s) => skipMissions(s, offer.missions, todayISO()));
+              onClose();
+            }}
+          >
+            Пропустити {missions}
+          </button>
+        </>
+      }
+    >
+      <p>
+        {offer.kind === 'all'
+          ? `Ще не пройдених місій ${stageGenitive(offer.stage)}: ${n}. Якщо пропустити, дитячий екран одразу поведе далі.`
+          : t(
+              `{name} вже знає ${offer.stage.letters.join(', ')}, тож можна пропустити день знайомства з буквою і звуком (${missions}). Читання складів, слів і фраз з нею лишиться.`,
+            )}
+      </p>
+      <p>{t('Пропущені місії лишаться на стежці: {name} зможе в них пограти й отримати лісового друга. Статус букви лишиться, хоч би що ви вибрали.')}</p>
+    </Modal>
+  );
+}
+
+/** «Пройти букву ще раз»: перед поверненням дорослий бачить усе, що станеться. */
+function RedoDialog({ stage, onClose }: { stage: Stage; onClose: () => void }) {
+  const child = useChild();
+  const t = (text: string) => personalize(text, child);
+  const progress = useProgress();
+  const preview = redoPreview(progress, stage.id);
+  if (!preview) return null;
+  const vowels = isVowelStage(stage);
+  const letters = stage.letters.join(', ');
+  const n = preview.missions;
+  const hides = preview.hides;
+  const many = hides.length > 1;
+  return (
+    <Modal
+      title={vowels ? 'Пройти голосні ще раз?' : `Пройти букву ${letters} ще раз?`}
+      onClose={onClose}
+      actions={
+        <>
+          <button type="button" className="text-button" onClick={onClose}>
+            Скасувати
+          </button>
+          <button
+            type="button"
+            className="big-button big-button--small"
+            onClick={() => {
+              updateProgress((s) => redoStage(s, stage.id, todayISO()));
+              onClose();
+            }}
+          >
+            Пройти ще раз
+          </button>
+        </>
+      }
+    >
+      <ul className="consequences">
+        <li>
+          {n} {plural(n, 'місія знову стане', 'місії знову стануть', 'місій знову стануть')} в чергу: місії {stageGenitive(stage)} і пройдені
+          місії наступних букв. Пропущені місії наступних букв лишаться пропущеними.
+        </li>
+        {hides.length > 0 && (
+          <li>
+            {t(
+              `${many ? 'Букви' : 'Буква'} ${hides.join(', ')} ${many ? 'сховаються' : 'сховається'} з вправ і ${many ? 'відкриються' : 'відкриється'} знову самі, коли {name} до ${many ? 'них' : 'неї'} дійде.`,
+            )}
+          </li>
+        )}
+        {!vowels && <li>Буква {letters} отримає статус «Ще вчить» і частіше траплятиметься в розминці.</li>}
+        <li>Зірочки, лісові друзі, статистика букв і журнал читання залишаться.</li>
+      </ul>
+    </Modal>
   );
 }
 
@@ -419,7 +579,8 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
   const progress = useProgress();
-  const done = COURSE_MISSIONS.filter((m) => progress.missions[m.id]?.completions).length;
+  const done = COURSE_MISSIONS.filter((m) => missionState(progress, m.id) === 'done').length;
+  const skipped = COURSE_MISSIONS.filter((m) => missionState(progress, m.id) === 'skipped').length;
   const letterStats = progress.unlocked.map((l) => progress.letters[l]).filter(Boolean);
   const seen = letterStats.reduce((a, l) => a + (l?.seen ?? 0), 0);
   const first = letterStats.reduce((a, l) => a + (l?.firstTry ?? 0), 0);
@@ -435,7 +596,10 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
             {done}
             <small>/{COURSE_MISSIONS.length}</small>
           </span>
-          <span className="stat__label">місій пройдено</span>
+          <span className="stat__label">
+            місій пройдено
+            {skipped > 0 && <small className="stat__extra">ще {skipped} пропущено</small>}
+          </span>
         </div>
         <div className="stat">
           <span className="stat__value">{seen ? Math.round((first / seen) * 100) : 0}%</span>
@@ -475,15 +639,18 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
                 const rec = progress.missions[m.id];
                 const missing = missingLetters(progress, m);
                 const av = missionAvailability(progress, m);
+                const again = rec && missionState(progress, m.id) === 'pending';
                 return (
                   <div key={m.id} className={`mission-row mission-row--${av}`}>
                     <span className="mission-row__icon" aria-hidden="true">
-                      {rec ? m.sticker : m.goal === 'learn' ? '🌱' : '🍃'}
+                      {rec ? m.sticker : av === 'skipped' ? '⏭️' : m.goal === 'learn' ? '🌱' : '🍃'}
                     </span>
                     <span className="mission-row__info">
                       <b>{m.title}</b>
                       <small>
                         {m.goal === 'learn' ? 'вчимося' : 'закріплюємо'} · {m.exercises.length} завдань
+                        {av === 'skipped' && ' · пропущено'}
+                        {again && ' · треба пройти ще раз'}
                         {rec &&
                           ` · пройдено ${rec.completions} ${plural(rec.completions, 'раз', 'рази', 'разів')}, востаннє ${formatDate(rec.lastCompletedAt)} · підказки ${Math.round(rec.lastHintRate * 100)}%${rec.lastReadTotal ? t(` · {сама прочитала|сам прочитав} ${rec.lastReadAlone}/${rec.lastReadTotal}`) : ''}`}
                       </small>
@@ -522,6 +689,18 @@ function SettingsTab() {
       <section className="panel settings">
         <h2 className="panel__title">Як грається {child.name}</h2>
         <RecordReadingSwitch />
+        <label className="switch-row">
+          <span>
+            <b>Нову букву відкриває дорослий</b>
+            <small>
+              {personalize(
+                'Коли {name} пройде всі місії букви, наступна не відкриється сама: у вкладці «Букви» з’явиться питання, чи {name} вже знає попередню. Поки ви не відповіли, {name} грає в «Повторення в лісі».',
+                child,
+              )}
+            </small>
+          </span>
+          <input type="checkbox" checked={settings.adultOpensLetters} onChange={(e) => set({ adultOpensLetters: e.target.checked })} />
+        </label>
         <Choice
           title="Букви для читання складів і слів"
           hint="Усі великими, як на початку букваря, або як пишеться в книжці (імена з великої)."
