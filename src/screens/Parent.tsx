@@ -682,7 +682,7 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
                 const rec = progress.missions[m.id];
                 const missing = missingLetters(progress, m);
                 const av = missionAvailability(progress, m);
-                const again = rec && missionState(progress, m.id) === 'pending';
+                const returnedToQueue = rec && missionState(progress, m.id) === 'pending';
                 return (
                   <div key={m.id} className={`mission-row mission-row--${av}`}>
                     <span className="mission-row__icon" aria-hidden="true">
@@ -693,7 +693,7 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
                       <small>
                         {m.goal === 'learn' ? 'вчимося' : 'закріплюємо'} · {m.exercises.length} завдань
                         {av === 'skipped' && ' · пропущено'}
-                        {again && ' · треба пройти ще раз'}
+                        {returnedToQueue && ' · треба пройти ще раз'}
                         {rec &&
                           ` · пройдено ${rec.completions} ${plural(rec.completions, 'раз', 'рази', 'разів')}, востаннє ${formatDate(rec.lastCompletedAt)} · підказки ${Math.round(rec.lastHintRate * 100)}%${rec.lastReadTotal ? t(` · {сама прочитала|сам прочитав} ${rec.lastReadAlone}/${rec.lastReadTotal}`) : ''}`}
                       </small>
