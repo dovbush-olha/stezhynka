@@ -69,7 +69,8 @@ button {
   -webkit-user-select: none;
 }
 
-button:disabled {
+button:disabled,
+button[aria-disabled='true'] {
   cursor: default;
 }
 

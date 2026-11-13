@@ -26,8 +26,9 @@ function resolveMission(m: Mission | 'practice'): { mission: Mission; practice: 
 function useTapSounds() {
   useEffect(() => {
     const onPointer = (e: PointerEvent) => {
+      // Кнопка, яка зараз не натискається, мовчить - і вимкнена, і та, що лише чекає (aria-disabled).
       const button = (e.target as HTMLElement | null)?.closest('button');
-      if (button && !button.disabled) tap();
+      if (button && !button.matches(':disabled, [aria-disabled="true"]')) tap();
     };
     const onVisibility = () => suspendAudio(document.hidden);
     window.addEventListener('pointerdown', onPointer);
