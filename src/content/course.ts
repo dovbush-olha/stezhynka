@@ -38,12 +38,7 @@ type DayDraft = Omit<Day, 'day' | 'missions'> & { missions: [MissionDraft, ...Mi
 
 const day = (title: string, badge: string, ...missions: [MissionDraft, ...MissionDraft[]]): DayDraft => ({ title, badge, missions });
 /** День знайомства з буквою і звуком: скорочений шлях етапу його пропускає. */
-const introDay = (title: string, badge: string, ...missions: [MissionDraft, ...MissionDraft[]]): DayDraft => ({
-  title,
-  badge,
-  missions,
-  intro: true,
-});
+const introDay = (...args: Parameters<typeof day>): DayDraft => ({ ...day(...args), intro: true });
 
 /** Початок етапу: дні після цієї позначки й до наступної належать йому. */
 interface StageMark {
