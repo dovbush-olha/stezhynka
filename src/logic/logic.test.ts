@@ -887,6 +887,17 @@ describe('шлях букви: дорослий пропускає знайом�
     }
   });
 
+  it('«Повторення в лісі» не знайомить наново з буквою, яку дорослий позначив знайомою', () => {
+    const intros = (s: ProgressState, seed: string) =>
+      buildPracticeMission(s, TODAY, makeRng(seed)).exercises.flatMap((e) => (e.kind === 'intro-letter' ? [e.letter] : []));
+    for (const choice of ['knows', 'confident'] as const) {
+      const s = applyKnownLetters(createInitialState(TODAY), { m: choice }, TODAY);
+      for (let seed = 0; seed < 10; seed++) expect(intros(s, `k-${seed}`), `${choice} ${seed}`).not.toContain('М');
+    }
+    // Відкрита, але ще не знайома буква - як і раніше, зі знайомством.
+    expect(intros(unlockLetter(createInitialState(TODAY), 'М', TODAY), 'k')).toContain('М');
+  });
+
   it('порада щодо статусу ніколи не пропонує «Знає впевнено» і не радить знизити його до «Знає»', () => {
     let s = createInitialState(TODAY);
     for (let i = 0; i < 6; i++) s = logLetter(s, { id: 'Л', firstTry: true }, TODAY);

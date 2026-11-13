@@ -51,9 +51,17 @@ export function prepareExercise(ex: Exercise, rng: Rng): Exercise {
   }
 }
 
-/** Букви, які дитина вже бачила (базові вважаються знайомими зі школи). */
+/**
+ * Чи знайома дитині буква: вже бачила її у вправах, базова (знайома зі школи)
+ * або дорослий сам позначив, що дитина її знає, - тоді знайомити з нею наново не треба.
+ */
+function isIntroduced(state: ProgressState, l: LetterId): boolean {
+  const lp = state.letters[l];
+  return BASE_LETTERS.includes(l) || (lp?.seen ?? 0) > 0 || lp?.status === 'knows' || lp?.status === 'confident';
+}
+
 function introducedLetters(state: ProgressState): LetterId[] {
-  return state.unlocked.filter((l) => BASE_LETTERS.includes(l) || (state.letters[l]?.seen ?? 0) > 0);
+  return state.unlocked.filter((l) => isIntroduced(state, l));
 }
 
 /** Що нижча вага, то раніше буква в черзі повторення; впевнено знайомі - в самому кінці. */
@@ -215,7 +223,7 @@ export function buildPracticeMission(state: ProgressState, today: string, rng: R
   const letters = state.unlocked.filter((l) => !held.includes(l));
   const exercises: Exercise[] = [];
 
-  const fresh = letters.find((l) => !BASE_LETTERS.includes(l) && (state.letters[l]?.seen ?? 0) === 0);
+  const fresh = letters.find((l) => !isIntroduced(state, l));
   if (fresh) exercises.push({ kind: 'intro-letter', letter: fresh }, letterExercise(fresh, letters, rng, 'find-letter'));
 
   const dueAll = dueLetters(state, today, [...(fresh ? [fresh] : []), ...held]);
