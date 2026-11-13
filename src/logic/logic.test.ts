@@ -791,6 +791,25 @@ describe('шлях букви: дорослий пропускає знайом�
     expect(s.unlocked).toContain('Н');
   });
 
+  it('пропущену місію схованої поверненням букви дитина не відкриє, доки знову до неї не дійде', () => {
+    // При знайомстві М - «Знає»: день знайомства з М пропущено, і М відкрита.
+    let s = applyKnownLetters(createInitialState(TODAY), { m: 'knows' }, TODAY);
+    s = completeAll(s, [...ids('vowels'), ...ids('l')]);
+    s = redoStage(s, 'l', TODAY);
+    expect(s.unlocked).not.toContain('М');
+    expect(missionAvailability(s, findMission('m-1')!)).toBe('locked');
+    s = completeAll(s, ids('l'));
+    expect(s.unlocked).toContain('М');
+    expect(missionAvailability(s, findMission('m-1')!)).toBe('skipped');
+  });
+
+  it('пропущену місію букви, яку сховав дорослий, дитина не відкриє, доки дорослий не відкриє букву', () => {
+    let s = setLetterStatus(reachedM(), 'М', 'confident', TODAY);
+    s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
+    s = lockLetter(s, 'М');
+    expect(missionAvailability(s, findMission('m-1')!)).toBe('needs-letters');
+  });
+
   it('повернення знімає пропуски самої букви', () => {
     let s = setLetterStatus(reachedM(), 'М', 'confident', TODAY);
     s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
