@@ -235,11 +235,7 @@
   border: none;
   border-radius: 50%;
   color: #fff;
-  transition: transform 0.12s, box-shadow 0.12s, background 0.25s;
-}
-
-.read-aloud__button:disabled {
-  cursor: default;
+  transition: transform 0.12s, box-shadow 0.12s;
 }
 
 .read-aloud__icon {
