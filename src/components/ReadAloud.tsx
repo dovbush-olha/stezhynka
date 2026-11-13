@@ -156,15 +156,15 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   };
 
   const look = readAloudLook(phase, say);
-  const onPress = phase === 'idle' ? () => void start() : phase === 'recording' ? requestStop : undefined;
+  const onPress = look.action === 'start' ? () => void start() : look.action === 'stop' ? requestStop : undefined;
   return (
     <div className={`read-aloud${phase === 'idle' ? '' : ' read-aloud--busy'}`}>
       <button
         type="button"
         className={`read-aloud__button read-aloud__button--${look.icon}`}
         onClick={onPress}
-        disabled={!look.pressable}
-        aria-label={look.caption.replace('■', '«стоп»')}
+        disabled={!look.action}
+        aria-label={look.label}
       >
         {/* Хвилі видно лише під час запису й прослуховування - так вирішують стилі. */}
         <span className="read-aloud__ripples" aria-hidden="true">

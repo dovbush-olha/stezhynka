@@ -10,7 +10,13 @@ describe('readAloudLook', () => {
   });
 
   it('натиснути можна лише щоб почати й щоб зупинити запис: поки мікрофон вмикається і поки дитина чує себе - ні', () => {
-    expect(PHASES.filter((p) => readAloudLook(p, false).pressable)).toEqual(['idle', 'recording']);
+    expect(PHASES.map((p) => readAloudLook(p, false).action)).toEqual(['start', undefined, 'stop', undefined]);
+  });
+
+  it('читалка екрана називає «стоп» словом, а не значком ■', () => {
+    expect(readAloudLook('recording', false).label).toBe('Читай! Коли все - натисни «стоп»');
+    expect(readAloudLook('recording', true).label).toBe('Кажи! Коли все - натисни «стоп»');
+    expect(readAloudLook('idle', false).label).toBe('Натисни й читай уголос');
   });
 
   it('підпис під кнопкою каже дорослому, що зараз робити', () => {
