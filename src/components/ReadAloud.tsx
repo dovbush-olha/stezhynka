@@ -65,8 +65,7 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   /** Коли дитина натиснула мікрофон і коли мікрофон справді почав писати. */
   const tappedAt = useRef(0);
   const recordingSince = useRef(0);
-  /** Дитина вже натиснула «стоп», а запис ще закороткий. */
-  const stopWanted = useRef(false);
+  /** Дитина вже натиснула «стоп», а запис ще закороткий: зупинимо, щойно він стане достатньо довгим. */
   const stopTimer = useRef<number | undefined>(undefined);
   const alive = useRef(true);
 
@@ -100,7 +99,7 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   /** Зупиняє запис, щойно він триває щонайменше MIN_MS. */
   const stopWhenReady = () => {
     window.clearTimeout(stopTimer.current);
-    if (!stopWanted.current || !stopRef.current) return;
+    if (!stopRef.current) return;
     const wait = untilMin(recordingSince.current);
     if (wait > 0) stopTimer.current = window.setTimeout(stopWhenReady, wait);
     else stopRef.current();
@@ -108,7 +107,6 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
 
   const requestStop = () => {
     if (untilMin(tappedAt.current) > 0) return;
-    stopWanted.current = true;
     stopWhenReady();
   };
 
