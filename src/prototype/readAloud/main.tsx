@@ -70,8 +70,10 @@ function useRecorder() {
   }, [real]);
 
   const stop = useCallback(() => {
-    if (performance.now() - since.current < MIN_MS) return;
-    stopRef.current?.();
+    // Як у ReadAloud: зарано натиснули - зупиняємо, щойно запис триватиме MIN_MS.
+    const left = since.current + MIN_MS - performance.now();
+    if (left > 0) window.setTimeout(() => stopRef.current?.(), left);
+    else stopRef.current?.();
   }, []);
 
   return { phase, start: () => void start(), stop, real };
