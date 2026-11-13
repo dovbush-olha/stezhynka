@@ -17,7 +17,7 @@
  * Дитина записує себе чи слухає свій запис: підказки й «послухай» чекають,
  * інакше голос дорослого перебʼє її голос чи потрапить у запис.
  */
-.exercise:has(.read-aloud--busy) button:not(.read-aloud) {
+.exercise:has(.read-aloud--busy) button:not(.read-aloud__button) {
   pointer-events: none;
 }
 
