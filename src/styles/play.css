@@ -384,9 +384,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .read-aloud__button--mic .read-aloud__icon,
-  .read-aloud__dots i,
-  .read-aloud__ripples i {
+  .read-aloud__dots i {
     animation: none;
+  }
+
+  /* Нерухомі хвилі виглядали б як жорстка обвідка кнопки: стан і так видно з кольору й піктограми. */
+  .read-aloud__button .read-aloud__ripples {
+    display: none;
   }
 }
 
