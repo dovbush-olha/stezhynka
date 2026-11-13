@@ -47,6 +47,7 @@ import {
   suggestStatus,
   todayISO,
   unlockLetter,
+  unlockedInCourseOrder,
   missionState,
   updateSettings,
   type LetterStatus,
@@ -150,7 +151,7 @@ function LettersTab() {
           «Знає впевнено» ставите лише ви: така буква не трапляється в розминці, а її місії можна пропустити.
         </p>
         <div className="letter-cards">
-          {progress.unlocked.map((l) => (
+          {unlockedInCourseOrder(progress).map((l) => (
             <LetterCard key={l} letter={l} onStatus={chooseStatus} onDialog={setDialog} />
           ))}
         </div>

@@ -2,7 +2,7 @@ import { BASE_LETTERS, PLANNED_LETTERS, UKRAINIAN_ALPHABET, isLetterId, lettersO
 import { LEGACY_CHILD, isChild, type Child } from '../content/child';
 import { isHelperId, type HelperId } from '../content/helpers';
 import type { Mission } from '../content/types';
-import { COURSE_MISSIONS, LEGACY_MISSION_IDS, previousStage, stageOfMission } from '../content/course';
+import { COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, previousStage, stageOfMission } from '../content/course';
 import type { ItemOutcome } from './review';
 import { nextReview, type ReviewItem } from './srs';
 
@@ -434,6 +434,16 @@ export function unlockLetter(state: ProgressState, id: LetterId, today = todayIS
     unlocked,
     letters: { ...state.letters, [id]: state.letters[id] ?? freshLetter('learning', today) },
   };
+}
+
+/**
+ * Відкриті букви в порядку, у якому їх вчать: спершу букви плану (голосні, Л, М, С, Н, К),
+ * далі решта за абеткою. Збережений список - за абеткою, тож порядок для показу береться звідси.
+ */
+export function unlockedInCourseOrder(state: ProgressState): LetterId[] {
+  const plan = COURSE_STAGES.flatMap((stage) => stage.letters);
+  const others = UKRAINIAN_ALPHABET.filter((l) => !plan.includes(l));
+  return [...plan, ...others].filter((l) => state.unlocked.includes(l));
 }
 
 export function lockLetter(state: ProgressState, id: LetterId): ProgressState {

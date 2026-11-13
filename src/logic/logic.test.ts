@@ -20,6 +20,7 @@ import {
   setLetterStatus,
   suggestStatus,
   unlockLetter,
+  unlockedInCourseOrder,
   updateSettings,
   type ProgressState,
 } from './progress';
@@ -1040,6 +1041,16 @@ describe('шлях букви: дорослий пропускає знайом�
     s = skipMissions(s, skipOffer(s, 'М')!.missions, TODAY);
     for (const id of ids('m')) expect(missionAvailability(s, findMission(id)!), id).toBe('done');
     expect(s.unlocked).toContain('С');
+  });
+
+  it('відкриті букви показуються в порядку курсу, а не за абеткою, і порядок не змінюється після відкриття нової', () => {
+    const plan = ['А', 'О', 'У', 'И', 'І', 'Е', 'Л'];
+    expect(unlockedInCourseOrder(createInitialState(TODAY))).toEqual(plan);
+    let s = unlockLetter(unlockLetter(reachedM(), 'Т', TODAY), 'Б', TODAY);
+    expect(unlockedInCourseOrder(s)).toEqual([...plan, 'М', 'Б', 'Т']);
+    // Старе збереження з буквами за абеткою - той самий порядок.
+    s = normalizeState(JSON.parse(JSON.stringify(s)), TODAY);
+    expect(unlockedInCourseOrder(s)).toEqual([...plan, 'М', 'Б', 'Т']);
   });
 
   it('старе збереження читається як «нічого не пропущено, нічого не повернуто, букви відкриваються самі»', () => {
