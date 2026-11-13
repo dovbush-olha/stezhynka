@@ -16,6 +16,7 @@ import {
   saveRecording,
   soundKey,
   startRecording,
+  useMicAvailable,
   useOwnRecordingKeys,
 } from '../audio/recordings';
 import { HELPERS } from '../content/helpers';
@@ -313,8 +314,8 @@ function ReadingTab() {
       <section className="panel">
       <h2 className="panel__title">Чи читає {child.name} склади без допомоги</h2>
       <p className="panel__hint">
-        Під час місій ви відмічаєте результат кнопками «{t('{Прочитала сама|Прочитав сам}')}» / «Прочитали разом». Тут можна побачити підсумок і додати
-        відмітку, якщо читали в книжці чи зошиті.
+        Сюди потрапляють ваші відмітки читання: зроблені одразу під час місії кнопками «{t('{Прочитала сама|Прочитав сам}')}» / «Прочитали разом» або
+        потім, за записом. Тут можна побачити підсумок і додати відмітку, якщо читали в книжці чи зошиті.
       </p>
       <ul className="read-list">{items.syllables.map(row)}</ul>
       {items.words.length > 0 && (
@@ -328,14 +329,17 @@ function ReadingTab() {
   );
 }
 
-/** Записи того, як дитина читала сама: дорослий слухає й відмічає, і відмітка йде в журнал читання. */
+/**
+ * Записи того, як дитина читала вголос: дорослий слухає й відмічає, і відмітка йде в журнал читання.
+ * Уже зроблені записи лишаються доступними й після вимкнення запису - щоб їх послухати або видалити.
+ */
 function ReadingReview() {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
-  const { recordReading, mode } = useProgress().settings;
+  const { recordReading } = useProgress().settings;
   const items = usePendingReadings();
   const [busy, setBusy] = useState<string | null>(null);
-  if (!items.length && !(recordReading && mode === 'solo')) return null;
+  if (!items.length && !recordReading) return null;
 
   const resolve = async (r: PendingReading, ok?: boolean) => {
     setBusy(r.id);
@@ -354,7 +358,7 @@ function ReadingReview() {
 
   return (
     <section className="panel">
-      <h2 className="panel__title">{t('Послухайте, як {name} {читала сама|читав сам}')}</h2>
+      <h2 className="panel__title">{t('Послухайте, як {name} {читала|читав}')}</h2>
       <p className="panel__hint">
         Натисніть ▶ і відмітьте, чи {t('{прочитала|прочитав}')} правильно. Відмітка потрапить у журнал нижче й допоможе вибирати, що повторювати, а запис
         видалиться. Записи зберігаються лише на цьому пристрої.
@@ -394,7 +398,7 @@ function ReadingReview() {
           ))}
         </ul>
       ) : (
-        <p className="review-empty">Нових записів немає. {t('Вони з’являться, коли {name} пограється {сама|сам}.')}</p>
+        <p className="review-empty">Нових записів немає. {t('Вони з’являться, коли {name} почитає вголос у місії.')}</p>
       )}
     </section>
   );
@@ -504,7 +508,6 @@ function MissionsTab({ onStart }: { onStart: Props['onStart'] }) {
 
 function SettingsTab() {
   const child = useChild();
-  const t = (text: string) => personalize(text, child);
   const progress = useProgress();
   const { settings } = progress;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -518,21 +521,7 @@ function SettingsTab() {
 
       <section className="panel settings">
         <h2 className="panel__title">Як грається {child.name}</h2>
-        <Choice
-          title="Хто поруч"
-          hint={
-            settings.mode === 'solo'
-              ? t(`{Сама|Сам}: слова перевіряються вибором картинки, склади - ${settings.recordReading ? 'записом читання, який ви послухаєте потім' : 'кнопкою «{Прочитала|Прочитав}!»'}, звук букви - вашим записом (якщо є).`)
-              : t('З дорослим: ви бачите підказки, що сказати, і відмічаєте, чи {прочитала сама|прочитав сам}.')
-          }
-          value={settings.mode}
-          options={[
-            ['solo', t('📱 {Сама|Сам}')],
-            ['together', '🧑‍🏫 З дорослим'],
-          ]}
-          onChange={(mode) => set({ mode })}
-        />
-        {settings.mode === 'solo' && <RecordReadingSwitch />}
+        <RecordReadingSwitch />
         <Choice
           title="Букви для читання складів і слів"
           hint="Усі великими, як на початку букваря, або як пишеться в книжці (імена з великої)."
@@ -630,13 +619,17 @@ function SettingsTab() {
   );
 }
 
-/** Дорослий вмикає запис читання - і одразу дає дозвіл на мікрофон, щоб дитина цього питання не бачила. */
+/**
+ * Єдине налаштування, від якого залежить, хто перевіряє читання вголос: запис чи дорослий поруч.
+ * Дорослий вмикає запис - і одразу дає дозвіл на мікрофон, щоб дитина цього питання не бачила.
+ */
 function RecordReadingSwitch() {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
   const { recordReading } = useProgress().settings;
   const [error, setError] = useState<string | null>(null);
-  const available = canRecord();
+  const supported = canRecord();
+  const available = useMicAvailable();
 
   const toggle = async (on: boolean) => {
     setError(null);
@@ -651,16 +644,20 @@ function RecordReadingSwitch() {
     <>
       <label className="switch-row">
         <span>
-          <b>Записувати, як {child.name} читає</b>
+          <b>Запис читання</b>
           <small>
-            Замість зірочки «{t('{Прочитала|Прочитав}')}!» - кнопка 🎙️: {child.name} читає вголос і одразу чує себе. Ви послухаєте записи на вкладці
-            «Читання складів» і відмітите, чи правильно. Записи залишаються лише на цьому пристрої.
+            Увімкнено - {child.name} читає вголос у 🎙️, а ви слухаєте записи потім на вкладці «Читання складів». Вимкнено - ви сидите поруч і
+            відмічаєте одразу: «{t('{Прочитала сама|Прочитав сам}')}» / «Прочитали разом». Записи залишаються лише на цьому пристрої.
           </small>
         </span>
-        <input type="checkbox" checked={recordReading && available} disabled={!available} onChange={(e) => void toggle(e.target.checked)} />
+        <input type="checkbox" checked={recordReading && supported} disabled={!supported} onChange={(e) => void toggle(e.target.checked)} />
       </label>
-      {!available && (
-        <p className="warning">Запис доступний, коли застосунок відкрито через захищене з’єднання (https) або на цьому комп’ютері (localhost).</p>
+      {!supported && <p className="warning">{HTTPS_WARNING} Поки що читання відмічаєте ви, одразу.</p>}
+      {supported && recordReading && !available && !error && (
+        <p className="warning">
+          Мікрофон заборонений або недоступний, тож поки що читання відмічаєте ви, одразу. Щоб записувати, дозвольте доступ до мікрофона в
+          браузері й відкрийте застосунок знову.
+        </p>
       )}
       {error && <p className="warning">{error}</p>}
     </>
@@ -795,7 +792,7 @@ function voiceLetters(unlocked: readonly LetterId[]): LetterId[] {
   return UKRAINIAN_ALPHABET.filter((l) => unlocked.includes(l) || PLANNED_LETTERS.includes(l));
 }
 
-/** Дорослий записує звуки букв своїм голосом - їх чує дитина, коли грається сама. */
+/** Дорослий записує звуки букв своїм голосом - їх чує дитина у вправах. */
 function Recordings() {
   const child = useChild();
   const t = (text: string) => personalize(text, child);
@@ -814,7 +811,7 @@ function Recordings() {
     <section className="panel">
       <h2 className="panel__title">Ваш голос для звуків</h2>
       <p className="panel__hint">
-        {t('Коли {name} грається {сама, вона|сам, він} чує звук букви.')} Де є кнопка ▶ з пунктиром, там уже є готовий голос.
+        {t('У вправах {name} чує звук букви.')} Де є кнопка ▶ з пунктиром, там уже є готовий голос.
         Хочете, щоб звучав ваш голос, - натисніть 🎙️ і скажіть сам звук (не назву букви): протяжне «м-м-м», коротке «к!».
         Запис зупиниться сам за 2 секунди. Ваших записів: {done} з {letters.length}.
       </p>

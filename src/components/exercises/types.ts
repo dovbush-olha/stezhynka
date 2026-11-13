@@ -1,5 +1,6 @@
 import type { HelperMood } from '../Helper';
 import type { ExerciseResult } from '../../logic/progress';
+import type { ReadingCheck } from '../../logic/readingCheck';
 import type { ReadingCase } from '../text';
 
 export interface HelperFeedback {
@@ -11,8 +12,8 @@ export interface ExerciseProps<E> {
   exercise: E;
   seed: string;
   readingCase: ReadingCase;
-  /** Дитина грається сама: без підказок для дорослого і без його відміток. */
-  solo: boolean;
+  /** Хто перевіряє читання вголос: запис (дорослий послухає потім) чи дорослий поруч, одразу. */
+  readingCheck: ReadingCheck;
   /** Склади з дужками й кнопка 🔊 видно одразу, без натискання «Підказка». */
   openHints: boolean;
   completed: boolean;

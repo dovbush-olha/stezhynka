@@ -17,11 +17,11 @@
  * Дитина записує себе чи слухає свій запис: підказки й «послухай» чекають,
  * інакше голос дорослого перебʼє її голос чи потрапить у запис.
  */
-.exercise:has(.solo-read--busy) button:not(.solo-read) {
+.exercise:has(.read-aloud--busy) button:not(.read-aloud) {
   pointer-events: none;
 }
 
-.exercise:has(.solo-read--busy) .exercise__tools {
+.exercise:has(.read-aloud--busy) .exercise__tools {
   opacity: 0.4;
 }
 
@@ -47,46 +47,6 @@
 
 .letter-glyph--sample {
   font-size: clamp(4rem, 9vw, 6rem);
-}
-
-.listen-badge {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: var(--leaf-pale);
-}
-
-.listen-badge__ear {
-  font-size: 3.4rem;
-  animation: ear-listen 2.4s ease-in-out infinite;
-}
-
-.listen-badge__waves {
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 3px solid rgba(111, 174, 106, 0.4);
-  animation: waves 2.4s ease-out infinite;
-}
-
-@keyframes ear-listen {
-  50% {
-    transform: rotate(-8deg) scale(1.06);
-  }
-}
-
-@keyframes waves {
-  from {
-    transform: scale(0.85);
-    opacity: 1;
-  }
-  to {
-    transform: scale(1.25);
-    opacity: 0;
-  }
 }
 
 .choice-row {

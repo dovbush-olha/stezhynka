@@ -6,8 +6,8 @@ import { chime } from '../../audio/audio';
 import { hasRecording, playRecording } from '../../audio/recordings';
 import { sayKey } from '../../logic/voice';
 import { makeRng, shuffle } from '../../logic/generate';
-import { SoloRead } from '../SoloRead';
-import { SayAloud, ColoredText, HintButton, ListenButton, ReadingMarks } from '../ui';
+import { ReadAloud } from '../ReadAloud';
+import { ColoredText, HintButton, ListenButton } from '../ui';
 import { caseText } from '../text';
 import { toLower } from '../../content/alphabet';
 import type { ExerciseProps } from './types';
@@ -19,10 +19,10 @@ interface Tile {
 
 /**
  * Склади слово чи фразу зі складів по порядку, а потім прочитай.
- * З дорослим - він каже слово по складах. Сама - підказкою є записаний голос дорослого
- * або однозначна картинка. Фраза складається слово за словом, між словами - широкий проміжок.
+ * Що складати, підказує записаний голос або однозначна картинка.
+ * Фраза складається слово за словом, між словами - широкий проміжок.
  */
-export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeedback, onComplete }: ExerciseProps<BuildWordExercise>) {
+export function BuildWord({ exercise, seed, readingCase, readingCheck, completed, onFeedback, onComplete }: ExerciseProps<BuildWordExercise>) {
   const word = getWord(exercise.word);
   const parts = syllablesOf(word);
   const groups = wordsOf(word);
@@ -40,9 +40,9 @@ export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeed
   const [mistakes, setMistakes] = useState(0);
   const [glow, setGlow] = useState(false);
   const show = (t: string) => caseText(t, readingCase);
-  const showPicture = solo && word.clear;
-  // Сама: слово звучить голосом дорослого, і його можна послухати ще раз.
-  const voiced = solo && hasRecording(sayKey(word.text));
+  const showPicture = word.clear;
+  // Слово звучить записаним голосом, і його можна послухати ще раз.
+  const voiced = hasRecording(sayKey(word.text));
   const listen = () => void playRecording(sayKey(word.text));
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeed
     onComplete({ hinted: mistakes > 0 || !alone, reading: { text: word.text, alone } });
   };
 
-  const soloDone = () => {
+  const recorded = () => {
     chime();
     onFeedback({ mood: 'cheer', text: pick(PRAISE) });
     onComplete({ hinted: mistakes > 0 });
@@ -111,7 +111,6 @@ export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeed
           {voiced && !built && <ListenButton onPlay={listen} big={!showPicture} />}
         </div>
       )}
-      {!solo && !built && <SayAloud>«{word.split}»</SayAloud>}
 
       <div
         className={['word-slots', phrase && 'word-slots--phrase', built && 'word-slots--built', completed && 'word-slots--revealed']
@@ -174,11 +173,9 @@ export function BuildWord({ exercise, seed, readingCase, solo, completed, onFeed
       )}
 
       {built && !completed && (
-        <>
-          {solo ? <SoloRead text={word.text} onDone={soloDone} /> : <ReadingMarks onMark={mark} />}
-        </>
+        <ReadAloud text={word.text} check={readingCheck} expected={`«${word.split}»`} onRecorded={recorded} onMark={mark} />
       )}
-      {completed && word.note && !solo && <p className="word-note">{word.note}</p>}
+      {completed && word.note && readingCheck === 'adult' && <p className="word-note">{word.note}</p>}
     </div>
   );
 }

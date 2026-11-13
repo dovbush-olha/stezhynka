@@ -184,7 +184,7 @@ describe('план місій', () => {
 
   it('використовує всі види вправ', () => {
     const kinds = new Set(COURSE_MISSIONS.flatMap((m) => m.exercises.map((e) => e.kind)));
-    // pick-picture не пишеться вручну - так перетворюється читання, коли дитина грається сама
+    // pick-picture не пишеться вручну - так перетворюється читання слова, щоб перевірити його без вимови
     expect([...kinds, 'pick-picture'].sort()).toEqual(Object.keys(INSTRUCTIONS).sort());
   });
 });

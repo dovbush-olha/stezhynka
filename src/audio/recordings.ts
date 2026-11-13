@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { BUILTIN_VOICE } from '../content/builtinVoice';
+import { isLastingMicFailure } from '../logic/readingCheck';
 import { setMicOpen } from './audio';
 import { tx } from './db';
 
@@ -17,6 +18,7 @@ const BUILTIN_KEYS: ReadonlySet<string> = new Set(Object.keys(BUILTIN_VOICE));
 let own = new Set<string>();
 /** Усе, що можна відтворити: свої записи й вбудований голос. */
 let playable: ReadonlySet<string> = BUILTIN_KEYS;
+/** Підписники на все, що тут змінюється: записи й доступність мікрофона. */
 let listeners: Array<() => void> = [];
 
 function setOwn(next: Set<string>) {
@@ -171,6 +173,43 @@ export function canRecord(): boolean {
   return typeof window !== 'undefined' && window.isSecureContext && Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== 'undefined';
 }
 
+/**
+ * Мікрофон відмовив надовго: доступ заборонений або мікрофона немає.
+ * Тримаємо це до наступної вдалої спроби, щоб дитина не натискала «Читаю!» знову й знову даремно.
+ * Тимчасовий збій (мікрофон зайнятий) сюди не потрапляє: його переживає лише та вправа, де він стався.
+ */
+let micBlocked = false;
+
+function setMicBlocked(blocked: boolean) {
+  if (micBlocked === blocked) return;
+  micBlocked = blocked;
+  listeners.forEach((l) => l());
+}
+
+/** Чи вийде записати голос просто зараз: пристрій уміє записувати, і мікрофон не відмовив. */
+function micAvailable(): boolean {
+  return canRecord() && !micBlocked;
+}
+
+export function useMicAvailable(): boolean {
+  return useSyncExternalStore(subscribe, micAvailable, micAvailable);
+}
+
+/**
+ * Дізнаємося про заборонений мікрофон заздалегідь, не питаючи дозволу: тоді вправа одразу
+ * показує відмітки дорослого. Де браузер цього не каже, дізнаємося з першої спроби запису.
+ */
+export async function watchMicrophonePermission() {
+  try {
+    const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+    const sync = () => setMicBlocked(status.state === 'denied');
+    sync();
+    status.onchange = sync;
+  } catch {
+    // Браузер не вміє відповісти про мікрофон - покаже перша спроба запису.
+  }
+}
+
 /** Записує звук до виклику stop() або максимум maxMs. `done` - готовий запис. */
 export async function startRecording(maxMs = 2500): Promise<{ stop: () => void; done: Promise<Blob> }> {
   // Тиша перед записом: голос із динаміка чи «бульбашка» дотику інакше потрапляють у запис.
@@ -200,10 +239,12 @@ export async function startRecording(maxMs = 2500): Promise<{ stop: () => void; 
     };
     rec.start();
     const timer = window.setTimeout(stop, maxMs);
+    setMicBlocked(false);
     return { stop, done };
   } catch (e) {
     stream?.getTracks().forEach((t) => t.stop());
     setMic(false);
+    if (isLastingMicFailure(e)) setMicBlocked(true);
     throw e;
   }
 }
@@ -218,8 +259,10 @@ export async function requestMicrophone(): Promise<boolean> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((t) => t.stop());
+    setMicBlocked(false);
     return true;
-  } catch {
+  } catch (e) {
+    if (isLastingMicFailure(e)) setMicBlocked(true);
     return false;
   }
 }

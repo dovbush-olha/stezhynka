@@ -209,9 +209,9 @@
   animation: correct 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both;
 }
 
-/* ---------- Сама: «Прочитала!» і «Послухай» ---------- */
+/* ---------- Читання вголос із записом: «Читаю!», «Готово», «Слухаємо» ---------- */
 
-.solo-read {
+.read-aloud {
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -228,48 +228,48 @@
   transition: transform 0.12s, box-shadow 0.12s;
 }
 
-.solo-read:active {
+.read-aloud:active {
   transform: translateY(5px);
   box-shadow: 0 1px 0 var(--leaf-dark);
 }
 
-.solo-read__star {
+.read-aloud__icon {
   font-size: 1.8rem;
   animation: star-wobble 2.4s ease-in-out infinite;
 }
 
 /* Іде запис: тепла «ягідна» кнопка з пульсуючою крапкою, як на диктофоні. */
-.solo-read--recording {
+.read-aloud--recording {
   background: linear-gradient(180deg, #f28aa6, var(--berry));
   box-shadow: 0 6px 0 #c24f70, 0 14px 24px -12px #c24f70;
   text-shadow: 0 1px 0 rgba(120, 30, 60, 0.35);
   animation: rec-breathe 1.6s ease-in-out infinite;
 }
 
-.solo-read--recording:active {
+.read-aloud--recording:active {
   box-shadow: 0 1px 0 #c24f70;
 }
 
 /* Дитина слухає свій запис: кнопка спокійна й не натискається. */
-.solo-read--hearing {
+.read-aloud--hearing {
   cursor: default;
 }
 
-.solo-read--hearing .solo-read__star {
+.read-aloud--hearing .read-aloud__icon {
   animation: none;
 }
 
 /* Мікрофон ще вмикається: кнопка вже відповіла на дотик, але крапка ще не пульсує. */
-.solo-read--starting {
+.read-aloud--starting {
   animation: none;
 }
 
-.solo-read--starting .solo-read__dot {
+.read-aloud--starting .read-aloud__dot {
   animation: none;
   opacity: 0.6;
 }
 
-.solo-read__dot {
+.read-aloud__dot {
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -291,8 +291,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .solo-read--recording,
-  .solo-read__dot {
+  .read-aloud--recording,
+  .read-aloud__dot {
     animation: none;
   }
 }
@@ -827,7 +827,7 @@
   }
 
   .mark,
-  .solo-read {
+  .read-aloud {
     width: 100%;
     justify-content: center;
   }
@@ -871,10 +871,20 @@
   }
 
   .tabs__tab {
+    position: relative;
     white-space: normal;
     padding: 10px 8px;
     font-size: 0.92rem;
     line-height: 1.2;
+  }
+
+  /* У вузькій вкладці лічильник не вміщається поруч із назвою і падав на другий рядок - тримаємо його в кутку. */
+  .tabs__badge {
+    position: absolute;
+    top: -5px;
+    right: -3px;
+    margin: 0;
+    box-shadow: 0 0 0 2px var(--paper);
   }
 
   .read-row__actions .chip {

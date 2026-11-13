@@ -4,13 +4,13 @@ import { HINTS, PRAISE, PRAISE_AFTER_HINT, TRY_AGAIN, pick } from '../../content
 import type { FindLetterExercise, LetterBySoundExercise } from '../../content/types';
 import { chime } from '../../audio/audio';
 import { hasRecording, playRecording, soundKey } from '../../audio/recordings';
-import { SayAloud, HintButton, ListenButton } from '../ui';
+import { HintButton, ListenButton } from '../ui';
 import type { ExerciseProps } from './types';
 
 type Props = ExerciseProps<FindLetterExercise | LetterBySoundExercise>;
 
 /** «Знайди таку саму букву» і «Вибери букву за звуком» - одна механіка з різною підказкою. */
-export function ChooseLetter({ exercise, solo, completed, onFeedback, onComplete }: Props) {
+export function ChooseLetter({ exercise, completed, onFeedback, onComplete }: Props) {
   const { target, options, kind } = exercise;
   const lower = exercise.letterCase === 'lower';
   const show = (l: LetterId) => (lower ? toLower(l) : l);
@@ -63,17 +63,8 @@ export function ChooseLetter({ exercise, solo, completed, onFeedback, onComplete
           <span className="letter-glyph letter-glyph--sample">{show(target)}</span>
         </div>
       ) : (
-        <>
-          {recorded ? (
-            <ListenButton onPlay={play} big />
-          ) : (
-            <div className="listen-badge" aria-hidden="true">
-              <span className="listen-badge__ear">👂</span>
-              <span className="listen-badge__waves" />
-            </div>
-          )}
-          {!solo && !recorded && <SayAloud>{info.sound}</SayAloud>}
-        </>
+        // Без запису звуку цієї вправи не буває: проходження замінює її на пошук за зразком.
+        <ListenButton onPlay={play} big />
       )}
 
       <div className={`choice-row choice-row--${options.length}`}>

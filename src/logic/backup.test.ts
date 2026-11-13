@@ -36,6 +36,21 @@ describe('файл збереження', () => {
     expect(b.progress.stars).toBe(12);
   });
 
+  it('стара копія з обраним режимом відновлюється: «З дорослим» - без запису читання, «Сама» - як було', () => {
+    const old = (mode: string, recordReading: boolean) => {
+      const raw = JSON.parse(file());
+      raw.progress.settings = { ...raw.progress.settings, mode, recordReading };
+      return parseBackup(JSON.stringify(raw), TODAY).progress;
+    };
+    const together = old('together', true);
+    expect(together.settings.recordReading).toBe(false);
+    expect(together.settings).not.toHaveProperty('mode');
+    expect(together.stars).toBe(12);
+    expect(together.settings.child?.name).toBe('Андрій');
+    expect(old('solo', true).settings.recordReading).toBe(true);
+    expect(old('solo', false).settings.recordReading).toBe(false);
+  });
+
   it.each([
     ['не JSON', 'привіт'],
     ['чужий файл', JSON.stringify({ name: 'package' })],

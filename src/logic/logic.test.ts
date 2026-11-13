@@ -21,6 +21,7 @@ import {
   updateSettings,
   type ProgressState,
 } from './progress';
+import { isLastingMicFailure, readingCheck, readingCheckInExercise } from './readingCheck';
 import { newestFirst, overflow } from './readingQueue';
 import { addDays, nextReview } from './srs';
 
@@ -52,7 +53,47 @@ describe('стан прогресу', () => {
     expect([...s.unlocked].sort()).toEqual(['А', 'О', 'У', 'И', 'І', 'Е', 'Л'].sort());
     expect(s.letters['Л']?.status).toBe('learning');
     expect(s.letters['А']?.status).toBe('sometimes');
-    expect(s.settings.mode).toBe('solo');
+  });
+
+  it('збереження з режимом «З дорослим» вимикає запис читання: читання й далі відмічає дорослий, а прогрес лишається', () => {
+    let old = createInitialState(TODAY);
+    old = applyExerciseResult(old, { hinted: false, reading: { text: 'ла', alone: true } }, TODAY);
+    old = complete(old, 'vowels-1');
+    const saved = JSON.parse(JSON.stringify(old));
+    saved.settings = { ...saved.settings, mode: 'together', recordReading: true };
+    const s = normalizeState(saved, TODAY);
+    expect(s.settings.recordReading).toBe(false);
+    expect(s.settings).not.toHaveProperty('mode');
+    expect(s.stars).toBe(old.stars);
+    expect(s.stickers).toEqual(old.stickers);
+    expect(s.missions).toEqual(old.missions);
+    expect(s.reading).toEqual(old.reading);
+  });
+
+  it('збереження з режимом «Сама» лишає запис читання таким, як був', () => {
+    const saved = (recordReading: boolean) => {
+      const raw = JSON.parse(JSON.stringify(createInitialState(TODAY)));
+      raw.settings = { ...raw.settings, mode: 'solo', recordReading };
+      return normalizeState(raw, TODAY).settings;
+    };
+    expect(saved(true).recordReading).toBe(true);
+    expect(saved(false).recordReading).toBe(false);
+    expect(saved(true)).not.toHaveProperty('mode');
+  });
+
+  it('пошкоджені режим чи запис читання у збереженні не ламають налаштувань', () => {
+    const saved = (settings: Record<string, unknown>) => {
+      const raw = JSON.parse(JSON.stringify(createInitialState(TODAY)));
+      raw.settings = { ...raw.settings, ...settings };
+      return normalizeState(raw, TODAY).settings;
+    };
+    // Невідомий режим - як без режиму: лишається збережене значення запису, а без нього - типове (увімкнено).
+    expect(saved({ mode: 'щось', recordReading: false }).recordReading).toBe(false);
+    expect(saved({ mode: 42, recordReading: 'так' }).recordReading).toBe(true);
+    expect(saved({ mode: 42 })).not.toHaveProperty('mode');
+    // «З дорослим» вимикає запис, хоч би яким було збережене значення запису.
+    expect(saved({ mode: 'together', recordReading: 'так' }).recordReading).toBe(false);
+    expect(saved({ mode: 'together', recordReading: undefined }).recordReading).toBe(false);
   });
 
   it('зірочки лише додаються - і за підказку теж', () => {
@@ -253,7 +294,7 @@ describe('згенеровані вправи', () => {
   });
 });
 
-describe('режим «сама»', () => {
+describe('вправи, які дитина виконує сама', () => {
   const always = () => true;
   const never = () => false;
 
@@ -356,7 +397,7 @@ describe('голос дорослого', () => {
     expect(preferRecordedVoice(find, (l) => l === 'Л')).toEqual({ ...find, kind: 'letter-by-sound' });
   });
 
-  it('без запису вправа не змінюється, і режим «сама» її не зіпсує', () => {
+  it('без запису вправа не змінюється, а з записом лишається пошуком на слух', () => {
     expect(preferRecordedVoice(find, () => false)).toBe(find);
     const voiced = preferRecordedVoice(find, () => true);
     expect(adaptForSolo(voiced, () => true, makeRng('x')).kind).toBe('letter-by-sound');
@@ -381,6 +422,46 @@ describe('записи читання для дорослого', () => {
     const off = updateSettings(createInitialState(TODAY), { recordReading: false });
     expect(normalizeState(JSON.parse(JSON.stringify(off)), TODAY).settings.recordReading).toBe(false);
     expect(normalizeState({ ...off, settings: { recordReading: 'так' } }, TODAY).settings.recordReading).toBe(true);
+  });
+});
+
+describe('хто перевіряє читання вголос', () => {
+  it('запис увімкнений і мікрофон доступний - читання записується і чекає на дорослого', () => {
+    expect(readingCheck({ recordReading: true }, true)).toBe('recording');
+  });
+
+  it('запис вимкнений - відмічає дорослий поруч, навіть якщо мікрофон доступний', () => {
+    expect(readingCheck({ recordReading: false }, true)).toBe('adult');
+  });
+
+  it('мікрофон заборонений чи недоступний - відмічає дорослий поруч, хоч запис і увімкнений', () => {
+    expect(readingCheck({ recordReading: true }, false)).toBe('adult');
+    expect(readingCheck({ recordReading: false }, false)).toBe('adult');
+  });
+
+  it('заборонений чи відсутній мікрофон недоступний надовго, а зайнятий - лише цього разу', () => {
+    expect(isLastingMicFailure(new DOMException('', 'NotAllowedError'))).toBe(true);
+    expect(isLastingMicFailure(new DOMException('', 'NotFoundError'))).toBe(true);
+    expect(isLastingMicFailure(new TypeError('getUserMedia is undefined'))).toBe(true);
+    expect(isLastingMicFailure(new DOMException('', 'NotReadableError'))).toBe(false);
+    expect(isLastingMicFailure(new DOMException('', 'AbortError'))).toBe(false);
+  });
+
+  it('у самій вправі: невдалий запис відмічає дорослий, а вже зроблений запис лишається перевіркою, хоч би мікрофон після цього й відмовив', () => {
+    const fresh = { failed: false, captured: false };
+    expect(readingCheckInExercise('recording', fresh)).toBe('recording');
+    expect(readingCheckInExercise('adult', fresh)).toBe('adult');
+    expect(readingCheckInExercise('recording', { failed: true, captured: false })).toBe('adult');
+    // Запис уже є і збережеться: якби тут відмітив ще й дорослий, читання мало б дві відмітки.
+    expect(readingCheckInExercise('adult', { failed: false, captured: true })).toBe('recording');
+    // Запис не зберігся - відмічає дорослий, хоч запис і був зроблений.
+    expect(readingCheckInExercise('recording', { failed: true, captured: true })).toBe('adult');
+  });
+
+  it('нове збереження записує читання, а колишнє «З дорослим» - ні', () => {
+    expect(readingCheck(createInitialState(TODAY).settings, true)).toBe('recording');
+    const old = { ...JSON.parse(JSON.stringify(createInitialState(TODAY))), settings: { mode: 'together', recordReading: true } };
+    expect(readingCheck(normalizeState(old, TODAY).settings, true)).toBe('adult');
   });
 });
 

@@ -21,7 +21,7 @@ export interface Backup {
   progress: ProgressState;
   /** Голос дорослого: ключ запису → звук. */
   recordings: Array<BackupAudio & { key: string }>;
-  /** Як дитина читала сама і ще чекає, поки дорослий послухає. */
+  /** Як дитина читала вголос і ще чекає, поки дорослий послухає. */
   readings: Array<BackupAudio & { id: string; text: string; at: string }>;
 }
 
