@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { saveReading } from '../audio/readings';
 import { playBlob, startRecording } from '../audio/recordings';
 import { readingCheckInExercise, type ReadingCheck } from '../logic/readingCheck';
+import { readAloudLook, type ReadAloudIcon, type ReadAloudPhase } from './readAloudLook';
 import { ReadingMarks } from './ui';
 
 /** Найдовше читання - коротка фраза по складах. */
 const MAX_MS = 8000;
 /**
- * Два швидкі дотики - це ще не читання: дотик до «Готово» раніше, ніж за стільки після «Читаю!»,
+ * Два швидкі дотики - це ще не читання: дотик до «стоп» раніше, ніж за стільки після дотику до мікрофона,
  * ігноруємо, а пізніший дотик зупиняє запис не раніше, ніж він триватиме стільки.
  */
 const MIN_MS = 800;
@@ -16,7 +17,19 @@ const MIN_MS = 800;
 const untilMin = (since: number) => since + MIN_MS - performance.now();
 const now = () => performance.now();
 
-type Phase = 'idle' | 'starting' | 'recording' | 'hearing';
+/** Піктограми круглої кнопки: мікрофон, «зачекай», «стоп», вушко. */
+const ICONS: Record<ReadAloudIcon, ReactNode> = {
+  mic: '🎙️',
+  wait: (
+    <span className="read-aloud__dots">
+      <i />
+      <i />
+      <i />
+    </span>
+  ),
+  stop: <span className="read-aloud__stop" />,
+  ear: '👂',
+};
 
 interface Props {
   text: string;
@@ -41,7 +54,7 @@ interface Props {
  * Вправа завершується рівно один раз: або записом, або відміткою.
  */
 export function ReadAloud({ text, check, say = false, expected, onRecorded, onMark }: Props) {
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [phase, setPhase] = useState<ReadAloudPhase>('idle');
   /** Запис у цій вправі не вдався - її відмічає дорослий. */
   const [failed, setFailed] = useState(false);
   const adult = readingCheckInExercise(check, { failed, captured: phase === 'hearing' }) === 'adult';
@@ -49,11 +62,10 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   const adultNow = useRef(adult);
   const settled = useRef(false);
   const stopRef = useRef<(() => void) | undefined>(undefined);
-  /** Коли дитина натиснула «Читаю!» і коли мікрофон справді почав писати. */
+  /** Коли дитина натиснула мікрофон і коли мікрофон справді почав писати. */
   const tappedAt = useRef(0);
   const recordingSince = useRef(0);
-  /** Дитина вже натиснула «Готово», а мікрофон ще вмикався чи запис ще закороткий. */
-  const stopWanted = useRef(false);
+  /** Дитина вже натиснула «стоп», а запис ще закороткий: зупинимо, щойно він стане достатньо довгим. */
   const stopTimer = useRef<number | undefined>(undefined);
   const alive = useRef(true);
 
@@ -87,7 +99,7 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
   /** Зупиняє запис, щойно він триває щонайменше MIN_MS. */
   const stopWhenReady = () => {
     window.clearTimeout(stopTimer.current);
-    if (!stopWanted.current || !stopRef.current) return;
+    if (!stopRef.current) return;
     const wait = untilMin(recordingSince.current);
     if (wait > 0) stopTimer.current = window.setTimeout(stopWhenReady, wait);
     else stopRef.current();
@@ -95,14 +107,14 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
 
   const requestStop = () => {
     if (untilMin(tappedAt.current) > 0) return;
-    stopWanted.current = true;
     stopWhenReady();
   };
 
   const start = async () => {
     // Відповідаємо на дотик одразу: на телефоні мікрофон вмикається до секунди-двох.
     tappedAt.current = now();
-    stopWanted.current = false;
+    // «Стоп» від попереднього запису не має зупинити новий.
+    window.clearTimeout(stopTimer.current);
     setPhase('starting');
     let rec: Awaited<ReturnType<typeof startRecording>>;
     try {
@@ -121,13 +133,12 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     stopRef.current = rec.stop;
     recordingSince.current = now();
     setPhase('recording');
-    stopWhenReady();
     const blob = await rec.done;
     stopRef.current = undefined;
     if (!alive.current) return;
     if (adultNow.current) {
       // Дорослий перебрав перевірку посеред запису - і вже до кінця вправи, навіть якщо мікрофон повернеться:
-      // інакше лишилася б кнопка «Готово» без запису, яка нічого не робить.
+      // інакше лишилася б кнопка «стоп» без запису, яка нічого не робить.
       setFailed(true);
       return;
     }
@@ -146,37 +157,30 @@ export function ReadAloud({ text, check, say = false, expected, onRecorded, onMa
     else setFailed(true);
   };
 
-  if (phase === 'hearing') {
-    return (
-      <button type="button" className="read-aloud read-aloud--busy read-aloud--hearing" disabled>
-        <span className="read-aloud__icon" aria-hidden="true">
-          🔊
-        </span>
-        Слухаємо
-      </button>
-    );
-  }
-
-  if (phase !== 'idle') {
-    const recording = phase === 'recording';
-    return (
+  const look = readAloudLook(phase, say);
+  const onPress = look.action === 'start' ? () => void start() : look.action === 'stop' ? requestStop : undefined;
+  return (
+    <div className={`read-aloud${phase === 'idle' ? '' : ' read-aloud--busy'}`}>
       <button
         type="button"
-        className={`read-aloud read-aloud--busy read-aloud--recording${recording ? '' : ' read-aloud--starting'}`}
-        onClick={requestStop}
+        className={`read-aloud__button read-aloud__button--${look.icon}`}
+        onClick={onPress}
+        // Не `disabled`: вимкнена кнопка втрачає вибір клавіатурою, а ця лише чекає й нічого не робить.
+        aria-disabled={!look.action}
+        aria-label={look.label}
       >
-        <span className="read-aloud__dot" aria-hidden="true" />
-        {recording ? 'Готово' : 'Слухаю…'}
+        {/* Хвилі видно лише під час запису й прослуховування - так вирішують стилі. */}
+        <span className="read-aloud__ripples" aria-hidden="true">
+          <i />
+          <i />
+        </span>
+        <span className="read-aloud__icon" aria-hidden="true">
+          {ICONS[look.icon]}
+        </span>
       </button>
-    );
-  }
-
-  return (
-    <button type="button" className="read-aloud read-aloud--mic" onClick={() => void start()}>
-      <span className="read-aloud__icon" aria-hidden="true">
-        🎙️
+      <span className={`read-aloud__caption read-aloud__caption--${look.icon}`} aria-hidden="true">
+        {look.caption}
       </span>
-      {say ? 'Кажу!' : 'Читаю!'}
-    </button>
+    </div>
   );
 }
