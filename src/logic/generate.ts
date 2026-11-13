@@ -2,7 +2,7 @@ import { BASE_LETTERS, LETTERS, LOOKALIKES, isReadableWith, lettersOf, toLower, 
 import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
 import { COURSE_MISSIONS } from '../content/course';
-import { PRACTICE_ID, nextMission, type LetterStatus, type ProgressState } from './progress';
+import { PRACTICE_ID, isConfident, isKnownByAdult, nextMission, type LetterStatus, type ProgressState } from './progress';
 import { dueItems, isWordItem, textsOf } from './review';
 import { compareCloseness, closeness } from './similar';
 import { isDue } from './srs';
@@ -56,8 +56,7 @@ export function prepareExercise(ex: Exercise, rng: Rng): Exercise {
  * або дорослий сам позначив, що дитина її знає, - тоді знайомити з нею наново не треба.
  */
 function isIntroduced(state: ProgressState, l: LetterId): boolean {
-  const lp = state.letters[l];
-  return BASE_LETTERS.includes(l) || (lp?.seen ?? 0) > 0 || lp?.status === 'knows' || lp?.status === 'confident';
+  return BASE_LETTERS.includes(l) || (state.letters[l]?.seen ?? 0) > 0 || isKnownByAdult(state, l);
 }
 
 function introducedLetters(state: ProgressState): LetterId[] {
@@ -136,7 +135,7 @@ export function warmUp(state: ProgressState, mission: Mission, today: string, rn
   const out: Exercise[] = [];
   // Впевнено знайому букву дорослий позначив саме для того, щоб на неї більше не витрачати час.
   const letter = dueLetters(state, today, [...(mission.newLetters ?? []), ...alreadyPractised]).find(
-    (l) => known.includes(l) && state.letters[l]?.status !== 'confident',
+    (l) => known.includes(l) && !isConfident(state, l),
   );
   if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng)));
 
@@ -228,7 +227,7 @@ export function buildPracticeMission(state: ProgressState, today: string, rng: R
 
   const dueAll = dueLetters(state, today, [...(fresh ? [fresh] : []), ...held]);
   // Повторення - про те, що ще не засвоєно: впевнено знайомі букви лише тоді, коли іншим повторення не потрібне.
-  const unsure = dueAll.filter((l) => state.letters[l]?.status !== 'confident');
+  const unsure = dueAll.filter((l) => !isConfident(state, l));
   const due = unsure.length ? unsure : dueAll;
   const introduced = introducedLetters(state).filter((l) => letters.includes(l) && LETTERS[l].kind !== 'sign');
   // З новою буквою місія й так довга: старі букви повторить розминка звичайних місій.

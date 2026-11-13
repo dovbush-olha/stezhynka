@@ -360,6 +360,17 @@ export function missionState(state: ProgressState, id: string): MissionState {
   return 'pending';
 }
 
+/** Дорослий позначив букву «Знає впевнено»: на неї вже не варто витрачати час. */
+export function isConfident(state: ProgressState, l: LetterId): boolean {
+  return state.letters[l]?.status === 'confident';
+}
+
+/** Дорослий позначив, що дитина знає букву: «Знає» чи «Знає впевнено». */
+export function isKnownByAdult(state: ProgressState, l: LetterId): boolean {
+  const status = state.letters[l]?.status;
+  return status === 'knows' || status === 'confident';
+}
+
 /** Дитина хоч раз пройшла місію сама. Зароблене не забирається: повернення в чергу цього не змінює. */
 export function isMissionEarned(state: ProgressState, id: string): boolean {
   return Boolean(state.missions[id]?.completions);

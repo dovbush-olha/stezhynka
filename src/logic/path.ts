@@ -16,6 +16,8 @@ import {
 } from '../content/course';
 import {
   autoUnlockLetters,
+  isConfident,
+  isKnownByAdult,
   isMissionDone,
   lettersReadyToOpen,
   missionState,
@@ -23,6 +25,7 @@ import {
   setLetterStatus,
   todayISO,
   unlockLetter,
+  type LetterStatus,
   type ProgressState,
 } from './progress';
 
@@ -42,9 +45,8 @@ export interface SkipOffer {
 export function skipOffer(state: ProgressState, letter: LetterId): SkipOffer | undefined {
   const stage = stageOfLetter(letter);
   if (!stage) return undefined;
-  const status = state.letters[letter]?.status;
-  const allConfident = stage.letters.every((l) => state.letters[l]?.status === 'confident');
-  const kind = allConfident ? 'all' : status === 'knows' || status === 'confident' ? 'intro' : undefined;
+  const allConfident = stage.letters.every((l) => isConfident(state, l));
+  const kind = allConfident ? 'all' : isKnownByAdult(state, letter) ? 'intro' : undefined;
   if (!kind) return undefined;
   const candidates = kind === 'all' ? stageMissions(stage) : introMissions(stage);
   const missions = candidates.filter((m) => !isMissionDone(state, m.id)).map((m) => m.id);
@@ -103,7 +105,7 @@ export function openQuestionedLetters(state: ProgressState, today = todayISO()):
 }
 
 /** Відповідь дорослого при знайомстві для етапу плану. */
-export type KnownChoice = 'unknown' | 'knows' | 'confident';
+export type KnownChoice = 'unknown' | Extract<LetterStatus, 'knows' | 'confident'>;
 
 /** Відповіді при знайомстві: ідентифікатор етапу → відповідь; етап без відповіді - «Ще не знає». */
 export type KnownChoices = Readonly<Partial<Record<string, KnownChoice>>>;
@@ -137,7 +139,7 @@ function laterStages(stage: Stage): Stage[] {
 function lettersToHide(state: ProgressState, later: readonly Stage[]): LetterId[] {
   return later
     .flatMap((s) => s.letters)
-    .filter((l) => state.unlocked.includes(l) && !BASE_LETTERS.includes(l) && state.letters[l]?.status !== 'confident');
+    .filter((l) => state.unlocked.includes(l) && !BASE_LETTERS.includes(l) && !isConfident(state, l));
 }
 
 /** Дія доступна, коли в етапі є пройдені або пропущені місії. */
