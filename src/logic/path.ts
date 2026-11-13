@@ -96,6 +96,12 @@ export function letterQuestion(state: ProgressState): LetterQuestion | undefined
   return previous && { letters, previous };
 }
 
+/** Відповідь «Так, відкрити» на питання дорослому: нові букви відкриваються, як відкрилися б самі. */
+export function openQuestionedLetters(state: ProgressState, today = todayISO()): ProgressState {
+  const question = letterQuestion(state);
+  return question ? question.letters.reduce((s, l) => unlockLetter(s, l, today), state) : state;
+}
+
 /** Відповідь дорослого при знайомстві для етапу плану. */
 export type KnownChoice = 'unknown' | 'knows' | 'confident';
 

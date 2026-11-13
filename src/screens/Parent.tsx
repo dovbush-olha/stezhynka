@@ -28,6 +28,7 @@ import { sayKey, voiceItems } from '../logic/voice';
 import {
   canRedoStage,
   letterQuestion,
+  openQuestionedLetters,
   redoPreview,
   redoStage,
   skipMissions,
@@ -305,7 +306,7 @@ function LetterQuestionAdvice({ question, onRedo }: { question: LetterQuestion; 
           <button
             type="button"
             className="big-button big-button--small"
-            onClick={() => updateProgress((s) => letters.reduce((acc, l) => unlockLetter(acc, l, todayISO()), s))}
+            onClick={() => updateProgress((s) => openQuestionedLetters(s, todayISO()))}
           >
             Так, відкрити {letters.join(', ')}
           </button>

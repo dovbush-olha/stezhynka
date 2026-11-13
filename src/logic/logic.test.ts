@@ -23,7 +23,7 @@ import {
   updateSettings,
   type ProgressState,
 } from './progress';
-import { applyKnownLetters, canRedoStage, letterQuestion, redoPreview, redoStage, skipMissions, skipOffer } from './path';
+import { applyKnownLetters, canRedoStage, letterQuestion, openQuestionedLetters, redoPreview, redoStage, skipMissions, skipOffer } from './path';
 import { isLastingMicFailure, readingCheck, readingCheckInExercise } from './readingCheck';
 import { newestFirst, overflow } from './readingQueue';
 import { addDays, nextReview } from './srs';
@@ -943,7 +943,8 @@ describe('шлях букви: дорослий пропускає знайом�
     // Без налаштування питання немає: буква відкрилася сама.
     expect(letterQuestion(reachedM())).toBeUndefined();
     // Відповідь «Так, відкрити».
-    s = unlockLetter(s, 'М', TODAY);
+    s = openQuestionedLetters(s, TODAY);
+    expect(s.unlocked).toContain('М');
     expect(letterQuestion(s)).toBeUndefined();
     expect(upNext(s)).toBe('m-1');
   });
