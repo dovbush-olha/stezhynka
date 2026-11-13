@@ -10,18 +10,16 @@
   display: flex;
   justify-content: center;
   gap: 12px;
-  transition: opacity 0.2s;
 }
 
 /*
- * Дитина записує себе чи слухає свій запис: підказки й «послухай» чекають,
+ * Дитина записує себе чи слухає свій запис: підказки, «послухай» і склади, які можна торкнути, чекають,
  * інакше голос дорослого перебʼє її голос чи потрапить у запис.
+ * Усе, що зараз не натискається, тьмяніє - щоб не здавалося, що кнопка зламалась.
+ * Кнопка запису лишається яскравою: нею дитина зупиняє запис.
  */
 .exercise:has(.read-aloud--busy) button:not(.read-aloud__button) {
   pointer-events: none;
-}
-
-.exercise:has(.read-aloud--busy) .exercise__tools {
   opacity: 0.4;
 }
 
@@ -413,6 +411,7 @@
   font: inherit;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.2s;
   animation:
     pop-in 0.35s ease both,
     syl-glow 1.1s ease var(--delay) both;

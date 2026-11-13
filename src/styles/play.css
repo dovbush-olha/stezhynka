@@ -406,7 +406,7 @@
   display: grid;
   place-items: center;
   box-shadow: 0 5px 0 #cfe6c5, 0 12px 20px -12px rgba(79, 138, 75, 0.7);
-  transition: transform 0.12s;
+  transition: transform 0.12s, opacity 0.2s;
 }
 
 .listen-button:active {
