@@ -319,8 +319,12 @@
   }
 }
 
+/* Хвилі лежать поверх кнопки поза сіткою, щоб не зсувати піктограму з центру. */
 .read-aloud__ripples {
+  position: absolute;
+  inset: 0;
   display: none;
+  pointer-events: none;
 }
 
 .read-aloud__button--stop .read-aloud__ripples,
