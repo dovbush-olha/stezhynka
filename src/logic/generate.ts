@@ -106,13 +106,10 @@ export function letterDistractors(target: LetterId, pool: readonly LetterId[], r
 
 /**
  * Згадати звук, побачивши букву, - те, що потрібно для читання, і найважче.
- * Тому без «Як звучить» у самій місії розминка здебільшого просить саме його, а впізнавання серед схожих - навперемін.
- * Якщо «Як звучить» у місії вже є (а в плані воно є в кожній місії), розминка лише впізнає букву,
- * щоб те саме завдання не повторювалося: згадати звук старої букви дитина просить «Повторення в лісі».
+ * Тому буква в розминці здебільшого саме така, а впізнавання серед схожих - навперемін.
  */
-function reviewVariant(rng: Rng, missionSaysSound: boolean): LetterVariant {
+function reviewVariant(rng: Rng): LetterVariant {
   const r = rng();
-  if (missionSaysSound) return r < 0.5 ? 'letter-by-sound' : 'find-letter';
   return r < 0.6 ? 'say-sound' : r < 0.8 ? 'letter-by-sound' : 'find-letter';
 }
 
@@ -131,6 +128,8 @@ export const MAX_WITH_WARM_UP = 12;
  */
 export function warmUp(state: ProgressState, mission: Mission, today: string, rng: Rng): Exercise[] {
   const limit = Math.max(1, Math.min(MAX_WARM_UP, MAX_WITH_WARM_UP - mission.exercises.length));
+  // Букву, яку місія й так шукає чи просить назвати звуком, розминка не бере:
+  // тож «Як звучить» у розминці завжди про іншу букву, ніж «Як звучить» у місії.
   const alreadyPractised = new Set<LetterId>(
     mission.exercises.flatMap((e) =>
       e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : [],
@@ -144,8 +143,7 @@ export function warmUp(state: ProgressState, mission: Mission, today: string, rn
   const letter = dueLetters(state, today, [...(mission.newLetters ?? []), ...alreadyPractised]).find(
     (l) => known.includes(l) && !isConfident(state, l),
   );
-  const missionSaysSound = mission.exercises.some((e) => e.kind === 'say-sound');
-  if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng, missionSaysSound)));
+  if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng)));
 
   for (const text of dueItems(state.review, today, known, textsOf(mission.exercises))) {
     if (out.length >= limit) break;
@@ -238,7 +236,7 @@ export function buildPracticeMission(state: ProgressState, today: string, rng: R
   const unsure = dueAll.filter((l) => !isConfident(state, l));
   const due = unsure.length ? unsure : dueAll;
   const introduced = introducedLetters(state).filter((l) => letters.includes(l) && LETTERS[l].kind !== 'sign');
-  // З новою буквою місія й так довга: старі букви впізнаватиме розминка звичайних місій, а згадувати їхній звук - наступне повторення.
+  // З новою буквою місія й так довга: старі букви повторить розминка звичайних місій.
   const focus = (due.length ? due : shuffle(introduced, rng)).slice(0, fresh ? 0 : 2);
   // Перша буква: спершу впізнаємо серед схожих, а наприкінці місії згадуємо її звук сама.
   // Друга - одразу згадуємо звук малої букви.
