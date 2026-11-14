@@ -4,7 +4,7 @@ import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/
 import { validateExercise, validateMission } from '../content/validate';
 import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
 import { adviseNextLetter, isDayEarned, mapMission, missionAvailability, recommend } from './availability';
-import { MAX_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
+import { MAX_WARM_UP, MAX_WITH_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
 import { dueItems, practisedItems, textsOf } from './review';
 import { adaptForSolo, canPickPicture, preferRecordedVoice } from './solo';
 import { closeness } from './similar';
@@ -556,7 +556,7 @@ describe('повторення складів і слів', () => {
       for (let seed = 0; seed < 10; seed++) {
         const warm = warmUp(s, m, TODAY, makeRng(`${m.id}-${seed}`));
         expect(warm.length, m.id).toBeLessThanOrEqual(MAX_WARM_UP);
-        expect(warm.length + m.exercises.length, m.id).toBeLessThanOrEqual(14);
+        expect(warm.length + m.exercises.length, m.id).toBeLessThanOrEqual(MAX_WITH_WARM_UP);
         const allowed = m.requires.filter((l) => !(m.newLetters ?? []).includes(l));
         const inMission = textsOf(m.exercises);
         for (const ex of warm) {
@@ -565,10 +565,14 @@ describe('повторення складів і слів', () => {
         }
       }
     }
-    // Місії з 11 вправ - повна розминка: буква, склади чи слова.
-    const warm = warmUp(s, mission('l-2'), TODAY, makeRng('w'));
+    // Місії з 10 вправ - повна розминка: буква, склади чи слова.
+    const warm = warmUp(s, mission('s-4'), TODAY, makeRng('w'));
     expect(warm).toHaveLength(MAX_WARM_UP);
-    expect(warmUp(s, mission('s-2'), TODAY, makeRng('w')).some((e) => e.kind !== 'find-letter' && e.kind !== 'letter-by-sound')).toBe(true);
+    expect(warmUp(s, mission('s-5'), TODAY, makeRng('w')).some((e) => e.kind !== 'find-letter' && e.kind !== 'letter-by-sound')).toBe(true);
+  });
+
+  it('у кожній місії лишається місце хоча б для однієї вправи розминки', () => {
+    for (const m of COURSE_MISSIONS) expect(m.exercises.length + 1, m.id).toBeLessThanOrEqual(MAX_WITH_WARM_UP);
   });
 
   it('без того, що чекає повторення, розминка лишається короткою', () => {

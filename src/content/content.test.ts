@@ -127,6 +127,18 @@ describe('план місій', () => {
     }
   });
 
+  it('звук у місії з приголосною питаємо лише раз, і щодня - звук самої букви', () => {
+    for (const [letter, days] of consonantDays) {
+      for (const day of days) {
+        for (const m of day.missions) {
+          expect(m.exercises.filter((e) => e.kind === 'say-sound').length, m.id).toBe(1);
+        }
+        const said = exercisesOf(day).some((e) => e.kind === 'say-sound' && e.letter === letter);
+        expect(said, `${letter}, день ${day.day}`).toBe(true);
+      }
+    }
+  });
+
   it('щодня дитина сама згадує звук И', () => {
     for (const day of COURSE) {
       expect(exercisesOf(day).some((e) => e.kind === 'say-sound' && e.letter === 'И'), `день ${day.day}`).toBe(true);
