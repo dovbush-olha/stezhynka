@@ -53,6 +53,8 @@ export function BuildWord({ exercise, seed, readingCase, readingCheck, completed
 
   // Довга фраза: сім і більше складів разом із зайвими або склад із чотирьох букв («Вовк»).
   // На телефоні звичайні віконця й склади зайняли б по три рядки, тож вони менші (див. play.css).
+  // Навіть дрібніші вміщаються лише до 9 карток і 3 складів у слові - цю межу для контенту стереже
+  // тест «фраза для складання вміщається на екрані телефона» (content.test.ts).
   const compact = phrase && (tiles.length > 6 || tiles.some((t) => t.text.length > 3));
   const built = placed.length === parts.length;
   const expected = parts[placed.length];

@@ -4,7 +4,7 @@ import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PHRASE_READ_I
 import { validateMission } from './validate';
 import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
 import type { Exercise, LetterId } from './types';
-import { ALL_WORDS, getWord, isPhrase, syllablesOf } from './words';
+import { ALL_WORDS, getWord, isPhrase, syllablesOf, wordsOf } from './words';
 
 describe('абетка', () => {
   it('містить 33 українські букви кирилицею', () => {
@@ -173,6 +173,28 @@ describe('план місій', () => {
       if (!phrases.length) continue;
       const built = exs.filter((e) => e.kind === 'build-word' && isPhrase(getWord(e.word)));
       expect(built.length, `день ${day.day}`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  // Межі, за яких фраза для складання ще вміщається на екрані телефона без прокрутки.
+  // Довгі фрази BuildWord показує дрібніше (exercise--compact, від 7 складів-карток або складу з 4 букв),
+  // але й так більше 9 карток чи слова з 4 складів екран не вмістить.
+  const PHRASE_BUILD_MAX_TILES = 9;
+  const PHRASE_BUILD_MAX_WORD_SYLLABLES = 3;
+
+  it.each(
+    COURSE_MISSIONS.flatMap((m) =>
+      m.exercises.flatMap((e) => (e.kind === 'build-word' && isPhrase(getWord(e.word)) ? [[m.id, e.word, e] as const] : [])),
+    ),
+  )('%s: фраза «%s» для складання вміщається на екрані телефона', (_id, _word, e) => {
+    const entry = getWord(e.word);
+    const tiles = syllablesOf(entry).length + e.distractors.length;
+    expect(tiles, `${tiles} складів разом із зайвими: більше ${PHRASE_BUILD_MAX_TILES} не вміститься на екрані телефона`).toBeLessThanOrEqual(PHRASE_BUILD_MAX_TILES);
+    for (const syllables of wordsOf(entry)) {
+      expect(
+        syllables.length,
+        `слово «${syllables.join('')}» має ${syllables.length} склади: слово з понад ${PHRASE_BUILD_MAX_WORD_SYLLABLES} складів не вміститься в рядок на екрані телефона`,
+      ).toBeLessThanOrEqual(PHRASE_BUILD_MAX_WORD_SYLLABLES);
     }
   });
 
