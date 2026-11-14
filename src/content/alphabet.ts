@@ -27,7 +27,7 @@ export const VOWELS_FIRST: LetterId[] = ['А', 'О', 'У', 'И', 'І', 'Е'];
 export const BASE_LETTERS: LetterId[] = [...VOWELS_FIRST, 'Л'];
 
 /** Приголосні з місіями, у порядку відкриття: кожна відкривається сама, коли пройдено місії попередньої. */
-export const PLANNED_LETTERS: LetterId[] = ['М', 'С', 'Н', 'К'];
+export const PLANNED_LETTERS: LetterId[] = ['М', 'С', 'Н', 'К', 'В', 'П', 'Р'];
 
 /** Ще не вивчені в школі - не відкриваємо без явного рішення дорослого. */
 export const NOT_YET_STUDIED: LetterId[] = ['Я', 'Ю', 'Є', 'Ї'];
@@ -85,6 +85,7 @@ export const LETTERS: Record<LetterId, LetterInfo> = {
  */
 export const LOOKALIKES: Partial<Record<LetterId, LetterId[]>> = {
   А: ['Л', 'Д'],
+  В: ['Р', 'Б', 'З'],
   Е: ['С', 'Є'],
   И: ['Н', 'Й', 'І'],
   І: ['Ї', 'Т'],
@@ -93,6 +94,8 @@ export const LOOKALIKES: Partial<Record<LetterId, LetterId[]>> = {
   М: ['Л', 'Н', 'И'],
   Н: ['И', 'М', 'П'],
   О: ['С', 'Ю'],
+  П: ['Л', 'Н', 'И'],
+  Р: ['В', 'Ь', 'Б'],
   С: ['О', 'Е', 'Є'],
   У: ['Ч', 'Х'],
 };
