@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NOT_YET_STUDIED, PLANNED_LETTERS, isReadableWith, type LetterId } from '../content/alphabet';
-import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/types';
+import type { BuildWordExercise, Exercise, Mission, PickByEarExercise } from '../content/types';
 import { MAX_MISSION_EXERCISES, validateExercise, validateMission } from '../content/validate';
 import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
 import { adviseNextLetter, isDayEarned, mapMission, missionAvailability, recommend } from './availability';
@@ -663,25 +663,33 @@ describe('звук букви: згадати, а не лише впізнати
     }
   });
 
-  it('розминка не бере букв, які місія вже шукає чи просить назвати звуком, і здебільшого просить згадати звук', () => {
+  /** Розминки до кожної місії курсу (по 10 seed-ів), коли всі букви плану вже бачені й важкі. */
+  function allWarmUps(): { mission: Mission; warm: Exercise[] }[] {
     let s = createInitialState(TODAY);
-    // Букви плану вже бачені й важкі: розминка щоразу бере якусь букву, зокрема приголосну.
     for (const l of PLANNED_LETTERS) s = logLetter(unlockLetter(s, l, TODAY), { id: l, firstTry: false }, TODAY);
-    const kinds: string[] = [];
-    const empty = new Set<string>();
-    for (const m of COURSE_MISSIONS) {
-      const inMission = letterTargets(m.exercises);
-      for (let seed = 0; seed < 10; seed++) {
-        const warm = warmUp(s, m, TODAY, makeRng(`${m.id}-${seed}`));
-        for (const l of letterTargets(warm)) expect(inMission, m.id).not.toContain(l);
-        // На початку голосних старих букв ще немає - розминка там порожня.
-        if (!warm.length && m.requires.includes('Л')) empty.add(m.id);
-        const letterKind = warm.find((e) => e.kind === 'say-sound' || e.kind === 'find-letter' || e.kind === 'letter-by-sound')?.kind;
-        if (letterKind) kinds.push(letterKind);
-      }
+    return COURSE_MISSIONS.flatMap((mission) =>
+      Array.from({ length: 10 }, (_, seed) => ({ mission, warm: warmUp(s, mission, TODAY, makeRng(`${mission.id}-${seed}`)) })),
+    );
+  }
+
+  it('розминка не бере букв, які місія вже шукає чи просить назвати звуком', () => {
+    for (const { mission, warm } of allWarmUps()) {
+      const inMission = letterTargets(mission.exercises);
+      for (const l of letterTargets(warm)) expect(inMission, mission.id).not.toContain(l);
     }
-    expect([...empty]).toEqual([]);
-    const share = (k: string) => kinds.filter((x) => x === k).length / kinds.length;
+  });
+
+  it('коли букви чекають повторення, розминка після голосних не буває порожньою', () => {
+    // На початку голосних старих букв ще немає - розминка там порожня; Л - перша приголосна.
+    const afterVowels = ({ mission }: { mission: Mission }) => mission.requires.includes('Л');
+    const empty = allWarmUps().filter((w) => afterVowels(w) && !w.warm.length);
+    expect(empty.map((w) => w.mission.id)).toEqual([]);
+  });
+
+  it('розминка здебільшого просить згадати звук букви', () => {
+    const letterKinds: Exercise['kind'][] = ['say-sound', 'find-letter', 'letter-by-sound'];
+    const kinds = allWarmUps().flatMap(({ warm }) => warm.filter((e) => letterKinds.includes(e.kind)).slice(0, 1).map((e) => e.kind));
+    const share = (k: Exercise['kind']) => kinds.filter((x) => x === k).length / kinds.length;
     // Задумано 60% «Як звучить» і по 20% двох інших.
     expect(share('say-sound')).toBeGreaterThan(0.5);
     expect(share('say-sound')).toBeLessThan(0.7);
