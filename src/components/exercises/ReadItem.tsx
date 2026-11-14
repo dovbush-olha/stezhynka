@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HINTS, PRAISE, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, pick } from '../../content/phrases';
+import { PRAISE, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, pick, readSplitHintFor } from '../../content/phrases';
 import type { ReadSyllableExercise, ReadWordExercise } from '../../content/types';
 import { getWord } from '../../content/words';
 import { chime } from '../../audio/audio';
@@ -31,7 +31,7 @@ export function ReadItem({ exercise, readingCase, readingCheck, openHints, compl
 
   const showHint = () => {
     setHint(true);
-    onFeedback({ mood: 'thinking', text: isWord ? HINTS.readWordSplit : HINTS.readSplit });
+    onFeedback({ mood: 'thinking', text: readSplitHintFor(exercise) });
   };
 
   const mark = (alone: boolean) => {

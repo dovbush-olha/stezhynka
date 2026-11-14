@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, isReadableWith, lettersOf } from './alphabet';
-import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PHRASE_READ_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN, instructionFor } from './phrases';
+import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PHRASE_READ_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN, instructionFor, readSplitHintFor } from './phrases';
 import { validateMission } from './validate';
 import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
 import type { Exercise, LetterId } from './types';
@@ -275,6 +275,17 @@ describe('інструкція до вправи', () => {
   it('фразу просить складати слово за словом, а одне слово - просто зі складів', () => {
     expect(instructionFor({ kind: 'build-word', word: 'Ми малі', distractors: [] })).toBe(PHRASE_BUILD_INSTRUCTION);
     expect(instructionFor({ kind: 'build-word', word: 'лама', distractors: [] })).toBe(INSTRUCTIONS['build-word']);
+  });
+});
+
+describe('підказка до читання', () => {
+  it('для фрази каже про кожне слово фрази, а не про одне слово', () => {
+    expect(readSplitHintFor({ kind: 'read-word', word: 'у мами' })).toBe(HINTS.readPhraseSplit);
+    expect(readSplitHintFor({ kind: 'read-word', word: 'Міла мила' })).toBe(HINTS.readPhraseSplit);
+    expect(readSplitHintFor({ kind: 'read-word', word: 'мама' })).toBe(HINTS.readWordSplit);
+    expect(readSplitHintFor({ kind: 'read-syllable', syllable: 'ма' })).toBe(HINTS.readSplit);
+    expect(HINTS.readPhraseSplit).toMatch(/кожне слово/);
+    expect(HINTS.readWordSplit).not.toMatch(/кожне слово/);
   });
 });
 

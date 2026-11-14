@@ -1,4 +1,4 @@
-import type { Exercise, ExerciseKind } from './types';
+import type { Exercise, ExerciseKind, ReadSyllableExercise, ReadWordExercise } from './types';
 import { getWord, isPhrase } from './words';
 
 /**
@@ -74,6 +74,7 @@ export const HINTS = {
   matchPickFirst: 'Торкнись будь-якої картки, а я покажу її пару.',
   blendDone: 'Звуки злилися в склад! Прочитай разом.',
   readWordSplit: 'Подивись: слово розділилося на склади. Кожен склад читай разом, як біжить кулька.',
+  readPhraseSplit: 'Подивись: кожне слово розділилося на склади. Читай слово за словом, кожен склад - разом, як біжить кулька.',
   buildDone: 'Слово готове! А тепер прочитай його.',
   buildMore: 'Так! А який склад далі?',
   buildNextWord: 'Слово готове! Тепер наступне слово.',
@@ -85,6 +86,12 @@ export const HINTS = {
   earWrong: 'Послухай ще раз і подивись на перший склад.',
   earGlow: 'Ось воно світиться! Торкнись.',
 };
+
+/** Підказка «Підказка» до читання: склад тягнемо разом, слово ділиться на склади, фраза - слово за словом. */
+export function readSplitHintFor(exercise: ReadSyllableExercise | ReadWordExercise): string {
+  if (exercise.kind === 'read-syllable') return HINTS.readSplit;
+  return isPhrase(getWord(exercise.word)) ? HINTS.readPhraseSplit : HINTS.readWordSplit;
+}
 
 export const GREETINGS = [
   'Привіт, {voc}! Підемо в чарівний ліс?',
