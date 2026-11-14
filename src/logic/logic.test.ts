@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { NOT_YET_STUDIED, isReadableWith, type LetterId } from '../content/alphabet';
+import { NOT_YET_STUDIED, PLANNED_LETTERS, isReadableWith, type LetterId } from '../content/alphabet';
 import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/types';
-import { validateExercise, validateMission } from '../content/validate';
+import { MAX_MISSION_EXERCISES, validateExercise, validateMission } from '../content/validate';
 import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
 import { adviseNextLetter, isDayEarned, mapMission, missionAvailability, recommend } from './availability';
 import { MAX_WARM_UP, MAX_WITH_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
@@ -543,7 +543,7 @@ describe('повторення складів і слів', () => {
   /** Стан після всіх місій з підказками всюди: усім складам і словам час повторення. */
   function struggled(): ProgressState {
     let s = createInitialState(TODAY);
-    for (const l of ['М', 'С', 'Н', 'К'] as LetterId[]) s = unlockLetter(s, l, TODAY);
+    for (const l of PLANNED_LETTERS) s = unlockLetter(s, l, TODAY);
     for (const m of COURSE_MISSIONS) {
       for (const ex of m.exercises) s = applyExerciseResult(s, { hinted: true, items: practisedItems(ex, true) }, TODAY);
     }
@@ -572,7 +572,8 @@ describe('повторення складів і слів', () => {
   });
 
   it('у кожній місії лишається місце хоча б для однієї вправи розминки', () => {
-    for (const m of COURSE_MISSIONS) expect(m.exercises.length + 1, m.id).toBeLessThanOrEqual(MAX_WITH_WARM_UP);
+    expect(MAX_MISSION_EXERCISES + 1).toBeLessThanOrEqual(MAX_WITH_WARM_UP);
+    for (const m of COURSE_MISSIONS) expect(m.exercises.length, m.id).toBeLessThanOrEqual(MAX_MISSION_EXERCISES);
   });
 
   it('без того, що чекає повторення, розминка лишається короткою', () => {
