@@ -107,9 +107,12 @@ export function letterDistractors(target: LetterId, pool: readonly LetterId[], r
 /**
  * Згадати звук, побачивши букву, - те, що потрібно для читання, і найважче.
  * Тому повторення букви здебільшого саме таке, а впізнавання серед схожих - навперемін.
+ * Якщо в місії вже є «Як звучить», розминка його не повторює: лише впізнавання,
+ * щоб місія не починалася й не продовжувалася тим самим завданням.
  */
-function reviewVariant(rng: Rng): LetterVariant {
+function reviewVariant(rng: Rng, withSaySound: boolean): LetterVariant {
   const r = rng();
+  if (!withSaySound) return r < 0.5 ? 'letter-by-sound' : 'find-letter';
   return r < 0.6 ? 'say-sound' : r < 0.8 ? 'letter-by-sound' : 'find-letter';
 }
 
@@ -141,7 +144,8 @@ export function warmUp(state: ProgressState, mission: Mission, today: string, rn
   const letter = dueLetters(state, today, [...(mission.newLetters ?? []), ...alreadyPractised]).find(
     (l) => known.includes(l) && !isConfident(state, l),
   );
-  if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng)));
+  const missionSaysSound = mission.exercises.some((e) => e.kind === 'say-sound');
+  if (letter) out.push(letterExercise(letter, known, rng, reviewVariant(rng, !missionSaysSound)));
 
   for (const text of dueItems(state.review, today, known, textsOf(mission.exercises))) {
     if (out.length >= limit) break;

@@ -663,10 +663,28 @@ describe('звук букви: згадати, а не лише впізнати
     }
   });
 
-  it('розминка здебільшого просить згадати звук букви', () => {
+  it('перед місією без «Як звучить» розминка здебільшого просить згадати звук букви', () => {
     const s = createInitialState(TODAY);
-    const kinds = Array.from({ length: 40 }, (_, i) => warmUp(s, COURSE_MISSIONS.find((m) => m.id === 'l-2')!, TODAY, makeRng(`w-${i}`))[0]?.kind);
+    const l2 = COURSE_MISSIONS.find((m) => m.id === 'l-2')!;
+    // У плані «Як звучить» є в кожній місії, тож місію без нього вигадуємо.
+    const silent = { ...l2, exercises: l2.exercises.filter((e) => e.kind !== 'say-sound') };
+    const kinds = Array.from({ length: 40 }, (_, i) => warmUp(s, silent, TODAY, makeRng(`w-${i}`))[0]?.kind);
     expect(kinds.filter((k) => k === 'say-sound').length).toBeGreaterThan(15);
+  });
+
+  it('якщо «Як звучить» уже є в місії, розминка просить знайти букву або вибрати її за звуком', () => {
+    let s = createInitialState(TODAY);
+    for (const l of PLANNED_LETTERS) s = unlockLetter(s, l, TODAY);
+    const kinds = new Set<string>();
+    for (const m of COURSE_MISSIONS.filter((x) => x.exercises.some((e) => e.kind === 'say-sound'))) {
+      for (let seed = 0; seed < 10; seed++) {
+        const warm = warmUp(s, m, TODAY, makeRng(`${m.id}-${seed}`));
+        expect(warm.some((e) => e.kind === 'say-sound'), m.id).toBe(false);
+        for (const e of warm) kinds.add(e.kind);
+      }
+    }
+    expect(kinds).toContain('find-letter');
+    expect(kinds).toContain('letter-by-sound');
   });
 
   it('відмітка дорослого за записом звука йде в повторення букви', () => {
