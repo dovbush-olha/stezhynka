@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, isReadableWith, lettersOf } from './alphabet';
-import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN } from './phrases';
+import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PHRASE_READ_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN, instructionFor } from './phrases';
 import { validateMission } from './validate';
 import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
 import type { Exercise, LetterId } from './types';
@@ -243,6 +243,19 @@ describe('план місій', () => {
   });
 });
 
+describe('інструкція до вправи', () => {
+  it('фразу просить читати слово за словом, а одне слово - по складах', () => {
+    expect(instructionFor({ kind: 'read-word', word: 'у мами' })).toBe(PHRASE_READ_INSTRUCTION);
+    expect(instructionFor({ kind: 'read-word', word: 'Міла мила' })).toBe(PHRASE_READ_INSTRUCTION);
+    expect(instructionFor({ kind: 'read-word', word: 'мама' })).toBe(INSTRUCTIONS['read-word']);
+  });
+
+  it('фразу просить складати слово за словом, а одне слово - просто зі складів', () => {
+    expect(instructionFor({ kind: 'build-word', word: 'Ми малі', distractors: [] })).toBe(PHRASE_BUILD_INSTRUCTION);
+    expect(instructionFor({ kind: 'build-word', word: 'лама', distractors: [] })).toBe(INSTRUCTIONS['build-word']);
+  });
+});
+
 describe('підбадьорення після помилки', () => {
   // Після помилки звучить TRY_AGAIN, а одразу за ним - підказка (ChooseLetter, PickByEar, PickPicture, BuildWord).
   const hintsAfterMistake = [
@@ -269,6 +282,7 @@ describe('фрази лисички', () => {
   const spoken = [
     ...Object.values(INSTRUCTIONS),
     PHRASE_BUILD_INSTRUCTION,
+    PHRASE_READ_INSTRUCTION,
     ...Object.values(HINTS),
     ...PRAISE,
     ...PRAISE_AFTER_HINT,

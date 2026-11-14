@@ -1,4 +1,5 @@
-import type { ExerciseKind } from './types';
+import type { Exercise, ExerciseKind } from './types';
+import { getWord, isPhrase } from './words';
 
 /**
  * Фрази звіра-помічника в бульбашці. Їх читає дорослий (або дитина, коли вже вміє).
@@ -8,6 +9,9 @@ import type { ExerciseKind } from './types';
 
 /** «Склади слово», коли складаємо фразу з кількох слів. */
 export const PHRASE_BUILD_INSTRUCTION = 'Склади фразу зі складів, слово за словом.';
+
+/** «Прочитай слово», коли читаємо фразу з кількох слів. */
+export const PHRASE_READ_INSTRUCTION = 'Прочитай фразу: слово за словом, по складах.';
 
 export const INSTRUCTIONS: Record<ExerciseKind, string> = {
   'intro-letter': 'Знайомся з новою буквою! Торкнись її.',
@@ -22,6 +26,13 @@ export const INSTRUCTIONS: Record<ExerciseKind, string> = {
   'pick-picture': 'Прочитай і знайди картинку.',
   'pick-by-ear': 'Послухай і знайди, що прозвучало.',
 };
+
+/** Що каже звір-помічник на початку вправи. Для фрази - інакше, ніж для одного слова. */
+export function instructionFor(exercise: Exercise): string {
+  if (exercise.kind === 'read-word' && isPhrase(getWord(exercise.word))) return PHRASE_READ_INSTRUCTION;
+  if (exercise.kind === 'build-word' && isPhrase(getWord(exercise.word))) return PHRASE_BUILD_INSTRUCTION;
+  return INSTRUCTIONS[exercise.kind];
+}
 
 export const PRAISE = [
   'Чудово!',
