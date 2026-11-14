@@ -355,6 +355,7 @@ describe('підбадьорення після помилки', () => {
     HINTS.earWrong,
     HINTS.pickWrong,
     HINTS.buildNext,
+    HINTS.buildNextMiddle,
     ...Object.values(LETTERS).map((l) => `Подивись: ${l.shapeHint}`),
   ];
   const words = (s: string): string[] => s.toLocaleLowerCase('uk-UA').match(/[а-щьюяґєії']{2,}/gu) ?? [];

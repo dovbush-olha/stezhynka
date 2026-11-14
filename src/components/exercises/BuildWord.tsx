@@ -85,7 +85,10 @@ export function BuildWord({ exercise, seed, readingCase, readingCheck, completed
       const m = mistakes + 1;
       setMistakes(m);
       if (m >= 2) setGlow(true);
-      onFeedback({ mood: 'thinking', text: m >= 2 ? HINTS.buildGlow : `${pick(TRY_AGAIN)} ${HINTS.buildNext}` });
+      // На початку слова питаємо, з чого воно починається, а посеред слова - який склад далі.
+      const atWordStart = offsets.includes(placed.length);
+      const nextHint = atWordStart ? HINTS.buildNext : HINTS.buildNextMiddle;
+      onFeedback({ mood: 'thinking', text: m >= 2 ? HINTS.buildGlow : `${pick(TRY_AGAIN)} ${nextHint}` });
     }
   };
 
