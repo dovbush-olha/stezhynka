@@ -233,9 +233,7 @@ describe('план місій', () => {
     const read = new Set(COURSE_MISSIONS.flatMap((m) => m.exercises.flatMap((e) => (e.kind === 'read-word' || e.kind === 'build-word' ? [e.word] : []))));
     // Слова з буквами поза планом (тато, дім) - для вільної практики, коли дорослий відкриє інші букви.
     const planned = ALL_WORDS.filter((w) => isReadableWith(w.text, [...BASE_LETTERS, ...PLANNED_LETTERS]));
-    // «у мами» в місіях плану не було ніколи: його дає лише «Повторення в лісі».
-    const practiceOnly = ['у мами'];
-    expect(planned.map((w) => w.text).filter((t) => !read.has(t) && !practiceOnly.includes(t))).toEqual([]);
+    expect(planned.map((w) => w.text).filter((t) => !read.has(t))).toEqual([]);
   });
 
   it('використовує всі види вправ', () => {
