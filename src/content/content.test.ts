@@ -139,6 +139,15 @@ describe('план місій', () => {
     }
   });
 
+  it('якщо звук букви дня питаємо двічі за день, то і для великої, і для малої букви', () => {
+    for (const [letter, days] of consonantDays) {
+      for (const day of days) {
+        const cases = exercisesOf(day).flatMap((e) => (e.kind === 'say-sound' && e.letter === letter ? [e.letterCase ?? 'upper'] : []));
+        if (cases.length >= 2) expect(new Set(cases).size, `${letter}, день ${day.day}`).toBe(2);
+      }
+    }
+  });
+
   it('щодня дитина сама згадує звук И', () => {
     for (const day of COURSE) {
       expect(exercisesOf(day).some((e) => e.kind === 'say-sound' && e.letter === 'И'), `день ${day.day}`).toBe(true);
