@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { NOT_YET_STUDIED, isReadableWith, type LetterId } from '../content/alphabet';
-import type { BuildWordExercise, Exercise, PickByEarExercise } from '../content/types';
-import { validateExercise, validateMission } from '../content/validate';
+import { NOT_YET_STUDIED, PLANNED_LETTERS, isReadableWith, type LetterId } from '../content/alphabet';
+import type { BuildWordExercise, Exercise, Mission, PickByEarExercise } from '../content/types';
+import { MAX_MISSION_EXERCISES, validateExercise, validateMission } from '../content/validate';
 import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
 import { adviseNextLetter, isDayEarned, mapMission, missionAvailability, recommend } from './availability';
-import { MAX_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
-import { dueItems, practisedItems, textsOf } from './review';
+import { MAX_WARM_UP, MAX_WITH_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
+import { dueItems, letterTargets, practisedItems, textsOf } from './review';
 import { adaptForSolo, canPickPicture, preferRecordedVoice } from './solo';
 import { closeness } from './similar';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
@@ -543,7 +543,7 @@ describe('повторення складів і слів', () => {
   /** Стан після всіх місій з підказками всюди: усім складам і словам час повторення. */
   function struggled(): ProgressState {
     let s = createInitialState(TODAY);
-    for (const l of ['М', 'С', 'Н', 'К'] as LetterId[]) s = unlockLetter(s, l, TODAY);
+    for (const l of PLANNED_LETTERS) s = unlockLetter(s, l, TODAY);
     for (const m of COURSE_MISSIONS) {
       for (const ex of m.exercises) s = applyExerciseResult(s, { hinted: true, items: practisedItems(ex, true) }, TODAY);
     }
@@ -556,7 +556,7 @@ describe('повторення складів і слів', () => {
       for (let seed = 0; seed < 10; seed++) {
         const warm = warmUp(s, m, TODAY, makeRng(`${m.id}-${seed}`));
         expect(warm.length, m.id).toBeLessThanOrEqual(MAX_WARM_UP);
-        expect(warm.length + m.exercises.length, m.id).toBeLessThanOrEqual(14);
+        expect(warm.length + m.exercises.length, m.id).toBeLessThanOrEqual(MAX_WITH_WARM_UP);
         const allowed = m.requires.filter((l) => !(m.newLetters ?? []).includes(l));
         const inMission = textsOf(m.exercises);
         for (const ex of warm) {
@@ -565,10 +565,15 @@ describe('повторення складів і слів', () => {
         }
       }
     }
-    // Місії з 11 вправ - повна розминка: буква, склади чи слова.
-    const warm = warmUp(s, mission('l-2'), TODAY, makeRng('w'));
+    // Місії з 10 вправ - повна розминка: буква, склади чи слова.
+    const warm = warmUp(s, mission('s-4'), TODAY, makeRng('w'));
     expect(warm).toHaveLength(MAX_WARM_UP);
-    expect(warmUp(s, mission('s-2'), TODAY, makeRng('w')).some((e) => e.kind !== 'find-letter' && e.kind !== 'letter-by-sound')).toBe(true);
+    expect(warmUp(s, mission('s-5'), TODAY, makeRng('w')).some((e) => e.kind !== 'find-letter' && e.kind !== 'letter-by-sound')).toBe(true);
+  });
+
+  it('у кожній місії лишається місце хоча б для однієї вправи розминки', () => {
+    expect(MAX_WITH_WARM_UP).toBe(12);
+    for (const m of COURSE_MISSIONS) expect(m.exercises.length, m.id).toBeLessThanOrEqual(MAX_MISSION_EXERCISES);
   });
 
   it('без того, що чекає повторення, розминка лишається короткою', () => {
@@ -658,10 +663,38 @@ describe('звук букви: згадати, а не лише впізнати
     }
   });
 
+  /** Розминки до кожної місії курсу (по 10 seed-ів), коли всі букви плану вже бачені й важкі. */
+  function allWarmUps(): { mission: Mission; warm: Exercise[] }[] {
+    let s = createInitialState(TODAY);
+    for (const l of PLANNED_LETTERS) s = logLetter(unlockLetter(s, l, TODAY), { id: l, firstTry: false }, TODAY);
+    return COURSE_MISSIONS.flatMap((mission) =>
+      Array.from({ length: 10 }, (_, seed) => ({ mission, warm: warmUp(s, mission, TODAY, makeRng(`${mission.id}-${seed}`)) })),
+    );
+  }
+
+  it('розминка не бере букв, які місія вже шукає чи просить назвати звуком', () => {
+    for (const { mission, warm } of allWarmUps()) {
+      const inMission = letterTargets(mission.exercises);
+      for (const l of letterTargets(warm)) expect(inMission, mission.id).not.toContain(l);
+    }
+  });
+
+  it('коли букви чекають повторення, розминка після голосних не буває порожньою', () => {
+    // На початку голосних старих букв ще немає - розминка там порожня; Л - перша приголосна.
+    const afterVowels = ({ mission }: { mission: Mission }) => mission.requires.includes('Л');
+    const empty = allWarmUps().filter((w) => afterVowels(w) && !w.warm.length);
+    expect(empty.map((w) => w.mission.id)).toEqual([]);
+  });
+
   it('розминка здебільшого просить згадати звук букви', () => {
-    const s = createInitialState(TODAY);
-    const kinds = Array.from({ length: 40 }, (_, i) => warmUp(s, COURSE_MISSIONS.find((m) => m.id === 'l-2')!, TODAY, makeRng(`w-${i}`))[0]?.kind);
-    expect(kinds.filter((k) => k === 'say-sound').length).toBeGreaterThan(15);
+    const letterKinds: Exercise['kind'][] = ['say-sound', 'find-letter', 'letter-by-sound'];
+    const kinds = allWarmUps().flatMap(({ warm }) => warm.filter((e) => letterKinds.includes(e.kind)).slice(0, 1).map((e) => e.kind));
+    const share = (k: Exercise['kind']) => kinds.filter((x) => x === k).length / kinds.length;
+    // Задумано 60% «Як звучить» і по 20% двох інших.
+    expect(share('say-sound')).toBeGreaterThan(0.5);
+    expect(share('say-sound')).toBeLessThan(0.7);
+    expect(share('find-letter')).toBeGreaterThan(0.1);
+    expect(share('letter-by-sound')).toBeGreaterThan(0.1);
   });
 
   it('відмітка дорослого за записом звука йде в повторення букви', () => {
@@ -889,9 +922,6 @@ describe('шлях букви: дорослий пропускає знайом�
     expect(redoPreview(reachedS(), 'l')).toMatchObject({ laterMissions: ids('m').length + 1, laterSkipped: false });
   });
 
-  /** Літери-вправи: де дитина впізнає букву чи згадує її звук. */
-  const letterTargets = (exercises: Exercise[]) =>
-    exercises.flatMap((e) => (e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : []));
   /** Голосні повторено сьогодні - чекає повторення лише Л. */
   const onlyLDue = () => {
     let s = createInitialState(TODAY);

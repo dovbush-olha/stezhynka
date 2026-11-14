@@ -2,8 +2,9 @@ import { BASE_LETTERS, LETTERS, LOOKALIKES, isReadableWith, lettersOf, toLower, 
 import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
 import { COURSE_MISSIONS } from '../content/course';
+import { MAX_MISSION_EXERCISES } from '../content/validate';
 import { PRACTICE_ID, isConfident, isKnownByAdult, nextMission, type LetterStatus, type ProgressState } from './progress';
-import { dueItems, isWordItem, textsOf } from './review';
+import { dueItems, isWordItem, letterTargets, textsOf } from './review';
 import { compareCloseness, closeness } from './similar';
 import { isDue } from './srs';
 
@@ -106,16 +107,21 @@ export function letterDistractors(target: LetterId, pool: readonly LetterId[], r
 
 /**
  * Згадати звук, побачивши букву, - те, що потрібно для читання, і найважче.
- * Тому повторення букви здебільшого саме таке, а впізнавання серед схожих - навперемін.
+ * Тому буква в розминці здебільшого саме така, а впізнавання серед схожих - навперемін.
  */
 function reviewVariant(rng: Rng): LetterVariant {
   const r = rng();
   return r < 0.6 ? 'say-sound' : r < 0.8 ? 'letter-by-sound' : 'find-letter';
 }
 
-/** Розминка - не більше трьох вправ, і разом з місією не більше чотирнадцяти. */
-export const MAX_WARM_UP = 3;
-const MAX_WITH_WARM_UP = 14;
+/**
+ * Розминка - не більше двох вправ, і разом з місією не більше дванадцяти, щоб місія не втомлювала.
+ * Межа власних вправ місії на одну менша, тож місце хоча б для однієї вправи розминки є завжди:
+ * так не забуваються вже вивчені букви.
+ * Розминка буває й порожньою - коли нічому не настав час повторення.
+ */
+export const MAX_WARM_UP = 2;
+export const MAX_WITH_WARM_UP = MAX_MISSION_EXERCISES + 1;
 
 /**
  * Розминка перед місією: буква, якій настав час повторення, і склади та слова з минулих місій,
@@ -124,11 +130,9 @@ const MAX_WITH_WARM_UP = 14;
  */
 export function warmUp(state: ProgressState, mission: Mission, today: string, rng: Rng): Exercise[] {
   const limit = Math.max(1, Math.min(MAX_WARM_UP, MAX_WITH_WARM_UP - mission.exercises.length));
-  const alreadyPractised = new Set<LetterId>(
-    mission.exercises.flatMap((e) =>
-      e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : [],
-    ),
-  );
+  // Букву, яку місія й так шукає чи просить назвати звуком, розминка не бере:
+  // тож «Як звучить» у розминці завжди про іншу букву, ніж «Як звучить» у місії.
+  const alreadyPractised = letterTargets(mission.exercises);
   const pool = mission.requires.filter((l) => state.unlocked.includes(l));
   // Нову букву місії до знайомства з нею не показуємо навіть як зайвий варіант.
   const known = pool.filter((l) => !(mission.newLetters ?? []).includes(l));

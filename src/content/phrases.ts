@@ -1,4 +1,5 @@
-import type { ExerciseKind } from './types';
+import type { Exercise, ExerciseKind, ReadSyllableExercise, ReadWordExercise } from './types';
+import { getWord, isPhrase } from './words';
 
 /**
  * Фрази звіра-помічника в бульбашці. Їх читає дорослий (або дитина, коли вже вміє).
@@ -8,6 +9,9 @@ import type { ExerciseKind } from './types';
 
 /** «Склади слово», коли складаємо фразу з кількох слів. */
 export const PHRASE_BUILD_INSTRUCTION = 'Склади фразу зі складів, слово за словом.';
+
+/** «Прочитай слово», коли читаємо фразу з кількох слів. */
+export const PHRASE_READ_INSTRUCTION = 'Прочитай фразу: слово за словом, по складах.';
 
 export const INSTRUCTIONS: Record<ExerciseKind, string> = {
   'intro-letter': 'Знайомся з новою буквою! Торкнись її.',
@@ -22,6 +26,13 @@ export const INSTRUCTIONS: Record<ExerciseKind, string> = {
   'pick-picture': 'Прочитай і знайди картинку.',
   'pick-by-ear': 'Послухай і знайди, що прозвучало.',
 };
+
+/** Що каже звір-помічник на початку вправи. Для фрази - інакше, ніж для одного слова. */
+export function instructionFor(exercise: Exercise): string {
+  if (exercise.kind === 'read-word' && isPhrase(getWord(exercise.word))) return PHRASE_READ_INSTRUCTION;
+  if (exercise.kind === 'build-word' && isPhrase(getWord(exercise.word))) return PHRASE_BUILD_INSTRUCTION;
+  return INSTRUCTIONS[exercise.kind];
+}
 
 export const PRAISE = [
   'Чудово!',
@@ -43,7 +54,11 @@ export const PRAISE_AFTER_HINT = [
 export const PRAISE_READING_ALONE = ['{Сама|Сам} {прочитала|прочитав}! Ура!', 'Чудове читання!', '{Яка|Який} ти {розумничка|розумник}!'];
 export const PRAISE_READING_TOGETHER = ['Разом читати теж весело!', 'Гарно прочитали разом!', 'Ще трішки - і {сама|сам} зможеш!'];
 
-export const TRY_AGAIN = ['Майже! Подивись уважно.', 'Спробуймо ще разок.', 'Нічого страшного, шукаймо разом.'];
+/**
+ * Підбадьорення після помилки. Одразу за ним звучить підказка, яка каже, що робити: подивитися, послухати чи прочитати.
+ * Тож саме воно дії не називає - інакше повторює підказку («ще разок... ще раз») чи просить подивитися у вправі на слух.
+ */
+export const TRY_AGAIN = ['Майже!', 'Не біда!', 'Нічого страшного, шукаймо разом.'];
 
 export const HINTS = {
   showAnswer: 'Ось вона світиться! Торкнись її.',
@@ -53,12 +68,15 @@ export const HINTS = {
   blendNext: 'Не відпускай пальчик - доведи кульку до другої букви!',
   readSplit: 'Дивись, як кулька біжить по дужці. Тягни звук разом з нею, без зупинки!',
   buildNext: 'Подумай, з якого складу починається.',
+  /** Помилка посеред слова: перший склад уже стоїть. */
+  buildNextMiddle: 'Подумай, який склад далі.',
   buildGlow: 'Ось потрібний склад світиться.',
   matchGlow: 'Подивись, де така сама картка.',
   matchWrong: 'Ці склади різні. Шукаймо далі!',
   matchPickFirst: 'Торкнись будь-якої картки, а я покажу її пару.',
   blendDone: 'Звуки злилися в склад! Прочитай разом.',
   readWordSplit: 'Подивись: слово розділилося на склади. Кожен склад читай разом, як біжить кулька.',
+  readPhraseSplit: 'Подивись: кожне слово розділилося на склади. Читай слово за словом, кожен склад - разом, як біжить кулька.',
   buildDone: 'Слово готове! А тепер прочитай його.',
   buildMore: 'Так! А який склад далі?',
   buildNextWord: 'Слово готове! Тепер наступне слово.',
@@ -70,6 +88,12 @@ export const HINTS = {
   earWrong: 'Послухай ще раз і подивись на перший склад.',
   earGlow: 'Ось воно світиться! Торкнись.',
 };
+
+/** Підказка «Підказка» до читання: склад тягнемо разом, слово ділиться на склади, фраза - слово за словом. */
+export function readSplitHintFor(exercise: ReadSyllableExercise | ReadWordExercise): string {
+  if (exercise.kind === 'read-syllable') return HINTS.readSplit;
+  return isPhrase(getWord(exercise.word)) ? HINTS.readPhraseSplit : HINTS.readWordSplit;
+}
 
 export const GREETINGS = [
   'Привіт, {voc}! Підемо в чарівний ліс?',

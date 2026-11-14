@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { helperName } from '../content/helpers';
 import { personalize } from '../content/child';
-import { INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION } from '../content/phrases';
+import { instructionFor } from '../content/phrases';
 import type { Mission } from '../content/types';
 import { fanfare, sparkle } from '../audio/audio';
 import { hasRecording, soundKey, useMicAvailable } from '../audio/recordings';
@@ -14,7 +14,6 @@ import { exerciseResult, finishMission, missionExercises } from '../logic/missio
 import { applyExerciseResult, todayISO, type ExerciseResult, type MissionSummary } from '../logic/progress';
 import { readingCheck } from '../logic/readingCheck';
 import { sayKey } from '../logic/voice';
-import { getWord, isPhrase } from '../content/words';
 import type { LetterId } from '../content/alphabet';
 import { getProgress, updateProgress, useChild, useProgress } from '../store/progressStore';
 
@@ -56,8 +55,7 @@ export function MissionPlayer({ mission, onExit, onRepeat }: Props) {
 
   const current = exercises[index];
   const completed = results.length > index;
-  const buildsPhrase = current?.kind === 'build-word' && isPhrase(getWord(current.word));
-  const bubble = personalize(feedback?.text ?? (buildsPhrase ? PHRASE_BUILD_INSTRUCTION : current ? INSTRUCTIONS[current.kind] : ''), child);
+  const bubble = personalize(feedback?.text ?? (current ? instructionFor(current) : ''), child);
   const mood = feedback?.mood ?? 'idle';
 
   const handleComplete = (result: ExerciseResult) => {

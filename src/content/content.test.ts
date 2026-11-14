@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, lettersOf } from './alphabet';
-import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN } from './phrases';
+import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, isReadableWith, lettersOf, toUpper } from './alphabet';
+import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PHRASE_READ_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN, instructionFor, readSplitHintFor } from './phrases';
 import { validateMission } from './validate';
 import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
 import type { Exercise, LetterId } from './types';
-import { ALL_WORDS, getWord, isPhrase, syllablesOf } from './words';
+import { ALL_WORDS, getWord, isPhrase, syllablesOf, wordsOf } from './words';
 
 describe('абетка', () => {
   it('містить 33 українські букви кирилицею', () => {
@@ -127,6 +127,27 @@ describe('план місій', () => {
     }
   });
 
+  it('звук у місії з приголосною питаємо лише раз, і щодня - звук самої букви', () => {
+    for (const [letter, days] of consonantDays) {
+      for (const day of days) {
+        for (const m of day.missions) {
+          expect(m.exercises.filter((e) => e.kind === 'say-sound').length, m.id).toBe(1);
+        }
+        const said = exercisesOf(day).some((e) => e.kind === 'say-sound' && e.letter === letter);
+        expect(said, `${letter}, день ${day.day}`).toBe(true);
+      }
+    }
+  });
+
+  it('якщо звук букви дня питаємо двічі за день, то і для великої, і для малої букви', () => {
+    for (const [letter, days] of consonantDays) {
+      for (const day of days) {
+        const cases = exercisesOf(day).flatMap((e) => (e.kind === 'say-sound' && e.letter === letter ? [e.letterCase ?? 'upper'] : []));
+        if (cases.length >= 2) expect(new Set(cases).size, `${letter}, день ${day.day}`).toBe(2);
+      }
+    }
+  });
+
   it('щодня дитина сама згадує звук И', () => {
     for (const day of COURSE) {
       expect(exercisesOf(day).some((e) => e.kind === 'say-sound' && e.letter === 'И'), `день ${day.day}`).toBe(true);
@@ -153,6 +174,87 @@ describe('план місій', () => {
       const built = exs.filter((e) => e.kind === 'build-word' && isPhrase(getWord(e.word)));
       expect(built.length, `день ${day.day}`).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  // Чи вміщається фраза для складання на екрані телефона 390×844 без прокрутки, рахуємо за розкладом із play.css:
+  // віконця фрази - не більше двох рядків, картки складів - не більше двох рядків (у дрібнішій довгій фразі - трьох).
+  // Ширину складу дає таблиця ширин букв, тож тест ловить і рядок, якому не вистачає кількох пікселів («У Ірини»).
+  // Змінюючи розміри віконець чи карток у play.css, оновіть і числа нижче.
+  const PHONE_FONT_PX = 0.09 * 390; // склад на картці й у віконці: 9vw
+  const LETTER_SPACING_EM = 0.04;
+  const PHONE_ROW_PX = 338; // ширина рядка віконець і карток у вправі
+  // Ширини букв шрифту Nunito (жирність 800) в em, виміряні в браузері.
+  const GLYPH_EM: Readonly<Record<string, number>> = {
+    А: 0.753, Б: 0.68, В: 0.695, Г: 0.569, Ґ: 0.569, Д: 0.811, Е: 0.605, Є: 0.684, Ж: 1.041, З: 0.632, И: 0.753,
+    І: 0.297, Ї: 0.297, Й: 0.753, К: 0.695, Л: 0.758, М: 0.876, Н: 0.78, О: 0.796, П: 0.772, Р: 0.664, С: 0.684,
+    Т: 0.632, У: 0.671, Ф: 0.908, Х: 0.685, Ц: 0.824, Ч: 0.708, Ш: 1.08, Щ: 1.131, Ь: 0.68, Ю: 1.067, Я: 0.699,
+    а: 0.573, б: 0.604, в: 0.581, г: 0.471, ґ: 0.471, д: 0.633, е: 0.565, є: 0.524, ж: 0.852, з: 0.533, и: 0.616,
+    і: 0.284, ї: 0.284, й: 0.616, к: 0.579, л: 0.61, м: 0.7, н: 0.62, о: 0.604, п: 0.617, р: 0.626, с: 0.494,
+    т: 0.49, у: 0.549, ф: 0.864, х: 0.575, ц: 0.638, ч: 0.587, ш: 0.851, щ: 0.884, ь: 0.563, ю: 0.844, я: 0.574,
+    "'": 0.256,
+  };
+  const PHRASE_LAYOUT = {
+    // Звичайна фраза: віконця сталої ширини 24vw.
+    regular: { slotMin: 0.24 * 390, slotExtra: 2 * 3, slotGap: 8, wordGap: 24, slotsPadding: 10, slotRows: 2,
+      tileMin: 0.25 * 390, tileExtra: 2 * (10 + 3), tileGap: 10, tileRows: 2 },
+    // Довга фраза (exercise--compact): віконце завширшки зі свій склад, усе дрібніше.
+    compact: { slotMin: 68, slotExtra: 2 * (4 + 3), slotGap: 8, wordGap: 20, slotsPadding: 8, slotRows: 2,
+      tileMin: 74, tileExtra: 2 * (8 + 3), tileGap: 8, tileRows: 3 },
+  };
+
+  /** Ширина складу в пікселях - великими буквами чи як пишеться, що ширше. */
+  const syllablePx = (text: string) =>
+    Math.max(
+      ...[text, toUpper(text)].map((t) =>
+        [...t].reduce((px, ch) => {
+          expect(GLYPH_EM[ch], `немає ширини букви «${ch}»`).toBeDefined();
+          return px + (GLYPH_EM[ch] + LETTER_SPACING_EM) * PHONE_FONT_PX;
+        }, 0),
+      ),
+    );
+
+  /** Скільки рядків займуть блоки, коли переносяться, як flex-wrap. */
+  const rowsOf = (widths: readonly number[], gap: number, room: number) => {
+    let rows = 0;
+    let line = Infinity;
+    for (const w of widths) {
+      if (w > room) return Infinity;
+      if (line + gap + w <= room) line += gap + w;
+      else [rows, line] = [rows + 1, w];
+    }
+    return rows;
+  };
+
+  it.each(
+    COURSE_MISSIONS.flatMap((m) =>
+      m.exercises.flatMap((e) => (e.kind === 'build-word' && isPhrase(getWord(e.word)) ? [[m.id, e.word, e] as const] : [])),
+    ),
+  )('%s: фраза «%s» для складання вміщається на екрані телефона', (_id, _word, e) => {
+    const entry = getWord(e.word);
+    const tiles = [...syllablesOf(entry), ...e.distractors];
+    // Як у BuildWord: від 7 карток або зі складом із 4 букв фраза дрібніша.
+    const compact = tiles.length > 6 || tiles.some((t) => t.length > 3);
+    const l = PHRASE_LAYOUT[compact ? 'compact' : 'regular'];
+
+    // Віконце завширшки з найширший склад, який у нього може лягти, - з самого початку, ще порожнє.
+    const words = wordsOf(entry).map((syllables) => {
+      const slots = syllables.map((s) => {
+        const text = syllablePx(s) + l.slotExtra;
+        if (!compact) expect(text, `склад «${s}» не вміщається у віконце`).toBeLessThanOrEqual(l.slotMin);
+        return Math.max(l.slotMin, text);
+      });
+      return slots.reduce((a, b) => a + b) + l.slotGap * (slots.length - 1);
+    });
+    const slotRows = rowsOf(words, l.wordGap, PHONE_ROW_PX - 2 * l.slotsPadding);
+    expect(slotRows, `віконця фрази займуть ${slotRows} рядки, а вміщається ${l.slotRows}`).toBeLessThanOrEqual(l.slotRows);
+
+    // Картки перемішані, тож рахуємо найгірший порядок: у кожен рядок, крім останнього, ляже щонайменше
+    // стільки карток, скільки вміщається найширших.
+    const widest = tiles.map((t) => Math.max(l.tileMin, syllablePx(t) + l.tileExtra)).sort((a, b) => b - a);
+    let perRow = 0;
+    while (perRow < widest.length && rowsOf(widest.slice(0, perRow + 1), l.tileGap, PHONE_ROW_PX) === 1) perRow++;
+    const tileRows = Math.ceil(tiles.length / perRow);
+    expect(tileRows, `${tiles.length} карток займуть до ${tileRows} рядків, а вміщається ${l.tileRows}`).toBeLessThanOrEqual(l.tileRows);
   });
 
   it('щодня від дня 2 складаємо хоча б три слова чи фрази', () => {
@@ -208,6 +310,13 @@ describe('план місій', () => {
     }
   });
 
+  it('кожне слово й фразу з банку, які можна прочитати буквами плану, дитина хоча б раз читає в місії', () => {
+    const read = new Set(COURSE_MISSIONS.flatMap((m) => m.exercises.flatMap((e) => (e.kind === 'read-word' || e.kind === 'build-word' ? [e.word] : []))));
+    // Слова з буквами поза планом (тато, дім) - для вільної практики, коли дорослий відкриє інші букви.
+    const planned = ALL_WORDS.filter((w) => isReadableWith(w.text, [...BASE_LETTERS, ...PLANNED_LETTERS]));
+    expect(planned.map((w) => w.text).filter((t) => !read.has(t))).toEqual([]);
+  });
+
   it('використовує всі види вправ', () => {
     const kinds = new Set(COURSE_MISSIONS.flatMap((m) => m.exercises.map((e) => e.kind)));
     // pick-picture не пишеться вручну - так перетворюється читання слова, щоб перевірити його без вимови
@@ -215,10 +324,58 @@ describe('план місій', () => {
   });
 });
 
+describe('інструкція до вправи', () => {
+  it('фразу просить читати слово за словом, а одне слово - по складах', () => {
+    expect(instructionFor({ kind: 'read-word', word: 'у мами' })).toBe(PHRASE_READ_INSTRUCTION);
+    expect(instructionFor({ kind: 'read-word', word: 'Міла мила' })).toBe(PHRASE_READ_INSTRUCTION);
+    expect(instructionFor({ kind: 'read-word', word: 'мама' })).toBe(INSTRUCTIONS['read-word']);
+  });
+
+  it('фразу просить складати слово за словом, а одне слово - просто зі складів', () => {
+    expect(instructionFor({ kind: 'build-word', word: 'Ми малі', distractors: [] })).toBe(PHRASE_BUILD_INSTRUCTION);
+    expect(instructionFor({ kind: 'build-word', word: 'лама', distractors: [] })).toBe(INSTRUCTIONS['build-word']);
+  });
+});
+
+describe('підказка до читання', () => {
+  it('для фрази каже про кожне слово фрази, а не про одне слово', () => {
+    expect(readSplitHintFor({ kind: 'read-word', word: 'у мами' })).toBe(HINTS.readPhraseSplit);
+    expect(readSplitHintFor({ kind: 'read-word', word: 'Міла мила' })).toBe(HINTS.readPhraseSplit);
+    expect(readSplitHintFor({ kind: 'read-word', word: 'мама' })).toBe(HINTS.readWordSplit);
+    expect(readSplitHintFor({ kind: 'read-syllable', syllable: 'ма' })).toBe(HINTS.readSplit);
+    expect(HINTS.readPhraseSplit).toMatch(/кожне слово/);
+    expect(HINTS.readWordSplit).not.toMatch(/кожне слово/);
+  });
+});
+
+describe('підбадьорення після помилки', () => {
+  // Після помилки звучить TRY_AGAIN, а одразу за ним - підказка (ChooseLetter, PickByEar, PickPicture, BuildWord).
+  const hintsAfterMistake = [
+    HINTS.listenAgain,
+    HINTS.earWrong,
+    HINTS.pickWrong,
+    HINTS.buildNext,
+    HINTS.buildNextMiddle,
+    ...Object.values(LETTERS).map((l) => `Подивись: ${l.shapeHint}`),
+  ];
+  const words = (s: string): string[] => s.toLocaleLowerCase('uk-UA').match(/[а-щьюяґєії']{2,}/gu) ?? [];
+
+  it.each(TRY_AGAIN)('«%s» не повторює слів підказки, що звучить за ним', (cheer) => {
+    for (const hint of hintsAfterMistake) {
+      expect(words(cheer).filter((w) => words(hint).includes(w)), `${cheer} ${hint}`).toEqual([]);
+    }
+  });
+
+  it.each(TRY_AGAIN)('«%s» не просить подивитися чи послухати: це каже підказка, а вправа може бути на слух', (cheer) => {
+    expect(cheer).not.toMatch(/див|слух|уважн/iu);
+  });
+});
+
 describe('фрази лисички', () => {
   const spoken = [
     ...Object.values(INSTRUCTIONS),
     PHRASE_BUILD_INSTRUCTION,
+    PHRASE_READ_INSTRUCTION,
     ...Object.values(HINTS),
     ...PRAISE,
     ...PRAISE_AFTER_HINT,

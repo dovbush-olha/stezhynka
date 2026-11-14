@@ -2,6 +2,9 @@ import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, isReadableWith
 import type { Exercise, Mission } from './types';
 import { WORDS, syllablesOf } from './words';
 
+/** Власних вправ у місії з плану: разом із розминкою (хоча б одна вправа) місія вкладається у дванадцять. */
+export const MAX_MISSION_EXERCISES = 11;
+
 /** Усі рядки, які дитина бачить і має розпізнати/прочитати у вправі. */
 export function childFacingTexts(ex: Exercise): string[] {
   switch (ex.kind) {
@@ -126,8 +129,8 @@ export function validateMission(m: Mission): string[] {
     const say = m.exercises.findIndex((e) => e.kind === 'say-sound' && e.letter === l);
     if (say !== -1 && say < intro) errors.push(`${m.id}: звук нової букви ${l} питаємо раніше, ніж знайомимо з нею`);
   }
-  if (m.exercises.length < 5 || m.exercises.length > 12) {
-    errors.push(`${m.id}: ${m.exercises.length} вправ - для 5-7 хвилин потрібно 5-12`);
+  if (m.exercises.length < 5 || m.exercises.length > MAX_MISSION_EXERCISES) {
+    errors.push(`${m.id}: ${m.exercises.length} вправ - для 5-7 хвилин потрібно 5-${MAX_MISSION_EXERCISES}`);
   }
   if (new Set(m.exercises.map((e) => e.kind)).size < 3) errors.push(`${m.id}: замало різноманітності вправ`);
   m.exercises.forEach((ex, i) => {
