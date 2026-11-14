@@ -647,6 +647,15 @@
   transition: all 0.3s;
 }
 
+/* Склад у віконці лежить поверх невидимого місця для нього (див. BuildWord). */
+.word-slot > * {
+  grid-area: 1 / 1;
+}
+
+.word-slot__room {
+  visibility: hidden;
+}
+
 .word-slot--next {
   border-color: var(--fox);
   background: rgba(255, 255, 255, 0.6);

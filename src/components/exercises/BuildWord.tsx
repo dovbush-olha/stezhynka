@@ -53,13 +53,16 @@ export function BuildWord({ exercise, seed, readingCase, readingCheck, completed
 
   // Довга фраза: сім і більше складів разом із зайвими або склад із чотирьох букв («Вовк»).
   // На телефоні звичайні віконця й склади зайняли б по три рядки, тож вони менші (див. play.css).
-  // Навіть дрібніші вміщаються лише до 9 карток і 3 складів у слові - цю межу для контенту стереже
-  // тест «фраза для складання вміщається на екрані телефона» (content.test.ts).
+  // Чи вміщаються навіть дрібніші, для кожної фрази курсу рахує тест
+  // «фраза для складання вміщається на екрані телефона» (content.test.ts).
   const compact = phrase && (tiles.length > 6 || tiles.some((t) => t.text.length > 3));
   const built = placed.length === parts.length;
   const expected = parts[placed.length];
   // «Лі» і «лі» - той самий склад (у «Лілі» обидва; великими буквами їх і не розрізниш).
   const fits = (tile: Tile) => expected !== undefined && toLower(tile.text) === toLower(expected);
+  // Невидимі склади, які можуть лягти у віконце («Лі» чи «лі»): віконце одразу має ширину складу,
+  // тож, заповнюючись, фраза не розширюється й не перескакує в новий рядок.
+  const roomFor = (part: string) => [...new Set(tiles.filter((t) => toLower(t.text) === toLower(part)).map((t) => t.text))];
   const glowTile = glow && !built ? tiles.find((t) => !placed.includes(t.id) && fits(t))?.id : undefined;
 
   const tap = (tile: Tile) => {
@@ -132,6 +135,12 @@ export function BuildWord({ exercise, seed, readingCase, readingCheck, completed
                   key={i}
                   className={`word-slot ${tile ? 'word-slot--filled' : ''} ${i === placed.length && !built ? 'word-slot--next' : ''}`}
                 >
+                  {!built &&
+                    roomFor(parts[i]).map((text) => (
+                      <span key={text} className="word-slot__room" aria-hidden="true">
+                        <ColoredText text={show(text)} className="reading-text reading-text--tile" />
+                      </span>
+                    ))}
                   {tile && <ColoredText text={show(tile.text)} className="reading-text reading-text--tile" />}
                 </span>
               );
