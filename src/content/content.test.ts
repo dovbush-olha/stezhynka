@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, lettersOf } from './alphabet';
+import { BASE_LETTERS, LETTERS, NOT_YET_STUDIED, PLANNED_LETTERS, VOWELS_FIRST, UKRAINIAN_ALPHABET, isReadableWith, lettersOf } from './alphabet';
 import { GREETINGS, HINTS, INSTRUCTIONS, PHRASE_BUILD_INSTRUCTION, PRAISE, PRAISE_AFTER_HINT, PRAISE_READING_ALONE, PRAISE_READING_TOGETHER, TRY_AGAIN } from './phrases';
 import { validateMission } from './validate';
 import { COURSE, COURSE_MISSIONS, COURSE_STAGES, LEGACY_MISSION_IDS, introMissions, isVowelStage, stageMissions } from './course';
@@ -218,6 +218,15 @@ describe('план місій', () => {
       expect(s.days.length, s.id).toBeGreaterThan(1);
       expect(introMissions(s)[0].newLetters, s.id).toEqual(s.letters);
     }
+  });
+
+  it('кожне слово й фразу з банку, які можна прочитати буквами плану, дитина хоча б раз читає в місії', () => {
+    const read = new Set(COURSE_MISSIONS.flatMap((m) => m.exercises.flatMap((e) => (e.kind === 'read-word' || e.kind === 'build-word' ? [e.word] : []))));
+    // Слова з буквами поза планом (тато, дім) - для вільної практики, коли дорослий відкриє інші букви.
+    const planned = ALL_WORDS.filter((w) => isReadableWith(w.text, [...BASE_LETTERS, ...PLANNED_LETTERS]));
+    // «у мами» в місіях плану не було ніколи: його дає лише «Повторення в лісі».
+    const practiceOnly = ['у мами'];
+    expect(planned.map((w) => w.text).filter((t) => !read.has(t) && !practiceOnly.includes(t))).toEqual([]);
   });
 
   it('використовує всі види вправ', () => {

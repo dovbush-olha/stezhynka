@@ -914,10 +914,10 @@ const DRAFT: Array<DayDraft | StageMark> = [
         word('сік'),
         build('коло', ['ка']),
         build('кіно', ['ко', 'на']),
-        word('око'),
         say('К', 'lower'),
         build('коса', ['ку', 'си']),
         byEar('коло', 'коса', 'кіно'),
+        word('лук'),
       ],
     },
     {
@@ -1039,7 +1039,6 @@ const DRAFT: Array<DayDraft | StageMark> = [
       exercises: [
         find('К', ['К', 'Л', 'Н'], 'lower'),
         build('молоко', ['ма', 'ку']),
-        word('сокіл'),
         build('носок', ['на']),
         say('К'),
         word('У Ніки мак'),
@@ -1047,6 +1046,7 @@ const DRAFT: Array<DayDraft | StageMark> = [
         build('Молоко Мілі', ['ма', 'ли']),
         word('Кекс і сік'),
         build('У мами сумка', ['мо', 'ку']),
+        word('У Ніни носок'),
         byEar('молоко', 'колесо', 'коло'),
       ],
     },
