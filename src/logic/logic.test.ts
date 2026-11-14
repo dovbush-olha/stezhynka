@@ -5,7 +5,7 @@ import { MAX_MISSION_EXERCISES, validateExercise, validateMission } from '../con
 import { COURSE, COURSE_MISSIONS, findMission, findStage, stageMissions } from '../content/course';
 import { adviseNextLetter, isDayEarned, mapMission, missionAvailability, recommend } from './availability';
 import { MAX_WARM_UP, MAX_WITH_WARM_UP, availableSyllables, buildPracticeMission, earExercise, letterDistractors, makeRng, warmUp } from './generate';
-import { dueItems, practisedItems, textsOf } from './review';
+import { dueItems, letterTargets, practisedItems, textsOf } from './review';
 import { adaptForSolo, canPickPicture, preferRecordedVoice } from './solo';
 import { closeness } from './similar';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
@@ -670,15 +670,10 @@ describe('звук букви: згадати, а не лише впізнати
     const kinds: string[] = [];
     const empty = new Set<string>();
     for (const m of COURSE_MISSIONS) {
-      const inMission = m.exercises.flatMap((e) =>
-        e.kind === 'say-sound' ? [e.letter] : e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : [],
-      );
+      const inMission = letterTargets(m.exercises);
       for (let seed = 0; seed < 10; seed++) {
         const warm = warmUp(s, m, TODAY, makeRng(`${m.id}-${seed}`));
-        for (const e of warm) {
-          if (e.kind === 'say-sound') expect(inMission, m.id).not.toContain(e.letter);
-          if (e.kind === 'find-letter' || e.kind === 'letter-by-sound') expect(inMission, m.id).not.toContain(e.target);
-        }
+        for (const l of letterTargets(warm)) expect(inMission, m.id).not.toContain(l);
         // На початку голосних старих букв ще немає - розминка там порожня.
         if (!warm.length && m.requires.includes('Л')) empty.add(m.id);
         const letterKind = warm.find((e) => e.kind === 'say-sound' || e.kind === 'find-letter' || e.kind === 'letter-by-sound')?.kind;
@@ -919,9 +914,6 @@ describe('шлях букви: дорослий пропускає знайом�
     expect(redoPreview(reachedS(), 'l')).toMatchObject({ laterMissions: ids('m').length + 1, laterSkipped: false });
   });
 
-  /** Літери-вправи: де дитина впізнає букву чи згадує її звук. */
-  const letterTargets = (exercises: Exercise[]) =>
-    exercises.flatMap((e) => (e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : []));
   /** Голосні повторено сьогодні - чекає повторення лише Л. */
   const onlyLDue = () => {
     let s = createInitialState(TODAY);

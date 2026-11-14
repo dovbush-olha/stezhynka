@@ -62,6 +62,13 @@ export function textsOf(exercises: readonly Exercise[]): Set<string> {
   return new Set(texts.map(toLower));
 }
 
+/** Букви, які вправи шукають чи просять назвати звуком. */
+export function letterTargets(exercises: readonly Exercise[]): LetterId[] {
+  return exercises.flatMap((e) =>
+    e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : [],
+  );
+}
+
 /**
  * Склади й слова, яким час повторення: спершу ті, що в нижчій коробці (даються важче),
  * потім ті, що чекають довше. Лише ті, що читаються доступними буквами.

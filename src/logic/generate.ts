@@ -3,7 +3,7 @@ import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
 import { COURSE_MISSIONS } from '../content/course';
 import { PRACTICE_ID, isConfident, isKnownByAdult, nextMission, type LetterStatus, type ProgressState } from './progress';
-import { dueItems, isWordItem, textsOf } from './review';
+import { dueItems, isWordItem, letterTargets, textsOf } from './review';
 import { compareCloseness, closeness } from './similar';
 import { isDue } from './srs';
 
@@ -130,11 +130,7 @@ export function warmUp(state: ProgressState, mission: Mission, today: string, rn
   const limit = Math.max(1, Math.min(MAX_WARM_UP, MAX_WITH_WARM_UP - mission.exercises.length));
   // Букву, яку місія й так шукає чи просить назвати звуком, розминка не бере:
   // тож «Як звучить» у розминці завжди про іншу букву, ніж «Як звучить» у місії.
-  const alreadyPractised = new Set<LetterId>(
-    mission.exercises.flatMap((e) =>
-      e.kind === 'find-letter' || e.kind === 'letter-by-sound' ? [e.target] : e.kind === 'say-sound' ? [e.letter] : [],
-    ),
-  );
+  const alreadyPractised = letterTargets(mission.exercises);
   const pool = mission.requires.filter((l) => state.unlocked.includes(l));
   // Нову букву місії до знайомства з нею не показуємо навіть як зайвий варіант.
   const known = pool.filter((l) => !(mission.newLetters ?? []).includes(l));
