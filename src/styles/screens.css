@@ -110,14 +110,15 @@
   position: relative;
 }
 
-.map__days::before {
+/* Стежка між днями: кожен день веде до сусіда у своєму ряду (у ряду 7 днів). */
+.map-day:not(:last-child):not(:nth-child(7n))::after {
   content: '';
   position: absolute;
-  left: 7%;
-  right: 7%;
-  top: 46px;
+  top: 38px;
+  left: 50%;
+  width: calc(100% + 8px);
   border-top: 5px dotted #e7c9a8;
-  z-index: 0;
+  z-index: -1;
 }
 
 .map-day {
@@ -1104,7 +1105,7 @@
     row-gap: 26px;
   }
 
-  .map__days::before {
+  .map-day::after {
     display: none;
   }
 
