@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { execSync } from 'node:child_process'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -20,5 +21,9 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(commit()),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
+  // Лише тести застосунку: у локальних теках (напр. .claude-config) бувають чужі тести.
+  test: {
+    include: ['src/**/*.test.ts'],
   },
 })

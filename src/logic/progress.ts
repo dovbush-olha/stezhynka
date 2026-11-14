@@ -386,7 +386,7 @@ export function nextMission(state: ProgressState, missions: Mission[] = COURSE_M
 }
 
 /**
- * Букви з плану (М, С, Н, К), яких бракує наступній місії, коли всі місії до неї пройдено.
+ * Букви з плану (М, С, Н, К, В, П, Р), яких бракує наступній місії, коли всі місії до неї пройдено.
  * Букву, яку дорослий сховав, не повертаємо: її відкриває лише він.
  */
 export function lettersReadyToOpen(state: ProgressState, missions: Mission[] = COURSE_MISSIONS): LetterId[] {
@@ -437,7 +437,7 @@ export function unlockLetter(state: ProgressState, id: LetterId, today = todayIS
 }
 
 /**
- * Відкриті букви в порядку, у якому їх вчать: спершу букви плану (голосні, Л, М, С, Н, К),
+ * Відкриті букви в порядку, у якому їх вчать: спершу букви плану (голосні, Л, М, С, Н, К, В, П, Р),
  * далі решта за абеткою. Збережений список - за абеткою, тож порядок для показу береться звідси.
  */
 export function unlockedInCourseOrder(state: ProgressState): LetterId[] {

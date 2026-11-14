@@ -83,7 +83,7 @@ describe('план місій', () => {
 
   it('перший день - лише голосні, далі першою приголосною йде Л', () => {
     for (const m of COURSE[0].missions) expect([...m.requires].sort()).toEqual([...VOWELS_FIRST].sort());
-    expect([...consonantDays.keys()]).toEqual(['Л', 'М', 'С', 'Н', 'К']);
+    expect([...consonantDays.keys()]).toEqual(['Л', 'М', 'С', 'Н', 'К', 'В', 'П', 'Р']);
     for (const m of consonantDays.get('Л')!.flatMap((d) => d.missions)) {
       expect([...m.requires].sort()).toEqual([...VOWELS_FIRST, 'Л'].sort());
     }
@@ -179,7 +179,7 @@ describe('план місій', () => {
 
   it('нові букви з’являються поступово і лише з плану', () => {
     const introduced = COURSE_MISSIONS.flatMap((m) => m.newLetters ?? []);
-    expect(introduced).toEqual(['Е', 'И', 'Л', 'М', 'С', 'Н', 'К']);
+    expect(introduced).toEqual(['Е', 'И', 'Л', 'М', 'С', 'Н', 'К', 'В', 'П', 'Р']);
   });
 
   it('кожна місія плану належить рівно одному етапу, і етапи йдуть у порядку плану', () => {
