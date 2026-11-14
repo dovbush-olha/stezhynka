@@ -243,6 +243,28 @@ describe('план місій', () => {
   });
 });
 
+describe('підбадьорення після помилки', () => {
+  // Після помилки звучить TRY_AGAIN, а одразу за ним - підказка (ChooseLetter, PickByEar, PickPicture, BuildWord).
+  const hintsAfterMistake = [
+    HINTS.listenAgain,
+    HINTS.earWrong,
+    HINTS.pickWrong,
+    HINTS.buildNext,
+    ...Object.values(LETTERS).map((l) => `Подивись: ${l.shapeHint}`),
+  ];
+  const words = (s: string): string[] => s.toLocaleLowerCase('uk-UA').match(/[а-щьюяґєії']{2,}/gu) ?? [];
+
+  it.each(TRY_AGAIN)('«%s» не повторює слів підказки, що звучить за ним', (cheer) => {
+    for (const hint of hintsAfterMistake) {
+      expect(words(cheer).filter((w) => words(hint).includes(w)), `${cheer} ${hint}`).toEqual([]);
+    }
+  });
+
+  it.each(TRY_AGAIN)('«%s» не просить подивитися чи послухати: це каже підказка, а вправа може бути на слух', (cheer) => {
+    expect(cheer).not.toMatch(/див|слух|уважн/iu);
+  });
+});
+
 describe('фрази лисички', () => {
   const spoken = [
     ...Object.values(INSTRUCTIONS),
