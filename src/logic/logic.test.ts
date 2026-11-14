@@ -674,15 +674,26 @@ describe('звук букви: згадати, а не лише впізнати
 
   it('якщо «Як звучить» уже є в місії, розминка просить знайти букву або вибрати її за звуком', () => {
     let s = createInitialState(TODAY);
-    for (const l of PLANNED_LETTERS) s = unlockLetter(s, l, TODAY);
+    // Букви плану вже бачені й важкі: розминка щоразу бере якусь букву, зокрема приголосну.
+    for (const l of PLANNED_LETTERS) s = logLetter(unlockLetter(s, l, TODAY), { id: l, firstTry: false }, TODAY);
     const kinds = new Set<string>();
+    const letters = new Set<string>();
+    const empty = new Set<string>();
     for (const m of COURSE_MISSIONS.filter((x) => x.exercises.some((e) => e.kind === 'say-sound'))) {
       for (let seed = 0; seed < 10; seed++) {
         const warm = warmUp(s, m, TODAY, makeRng(`${m.id}-${seed}`));
         expect(warm.some((e) => e.kind === 'say-sound'), m.id).toBe(false);
-        for (const e of warm) kinds.add(e.kind);
+        // На початку голосних старих букв ще немає - розминка там порожня.
+        if (!warm.length && m.requires.includes('Л')) empty.add(m.id);
+        if (warm.length) expect(warm[0].kind, m.id).toMatch(/^(find-letter|letter-by-sound)$/);
+        for (const e of warm) {
+          kinds.add(e.kind);
+          if (e.kind === 'find-letter' || e.kind === 'letter-by-sound') letters.add(e.target);
+        }
       }
     }
+    expect([...empty]).toEqual([]);
+    expect([...letters].some((l) => PLANNED_LETTERS.includes(l as LetterId))).toBe(true);
     expect(kinds).toContain('find-letter');
     expect(kinds).toContain('letter-by-sound');
   });
