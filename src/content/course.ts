@@ -358,7 +358,7 @@ const DRAFT: Array<DayDraft | StageMark> = [
       goal: 'reinforce',
       requires: withLM,
       sticker: '🦙',
-      adultNote: 'Склади з [м] і всіма голосними, а потім перші слова з [м]. Слова й складаємо зі складів: «ма-ма».',
+      adultNote: 'Склади з [м] і різними голосними, а потім перші слова з [м]. Слова й складаємо зі складів: «ма-ма».',
       exercises: [
         blend('М', 'У'),
         syllable('му'),
@@ -914,10 +914,10 @@ const DRAFT: Array<DayDraft | StageMark> = [
         word('сік'),
         build('коло', ['ка']),
         build('кіно', ['ко', 'на']),
+        word('лук'),
         say('К', 'lower'),
         build('коса', ['ку', 'си']),
         byEar('коло', 'коса', 'кіно'),
-        word('лук'),
       ],
     },
     {
