@@ -572,7 +572,7 @@ describe('повторення складів і слів', () => {
   });
 
   it('у кожній місії лишається місце хоча б для однієї вправи розминки', () => {
-    expect(MAX_MISSION_EXERCISES + 1).toBeLessThanOrEqual(MAX_WITH_WARM_UP);
+    expect(MAX_WITH_WARM_UP).toBe(12);
     for (const m of COURSE_MISSIONS) expect(m.exercises.length, m.id).toBeLessThanOrEqual(MAX_MISSION_EXERCISES);
   });
 

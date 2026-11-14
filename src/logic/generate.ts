@@ -2,6 +2,7 @@ import { BASE_LETTERS, LETTERS, LOOKALIKES, isReadableWith, lettersOf, toLower, 
 import type { Exercise, LetterCase, Mission } from '../content/types';
 import { ALL_WORDS, getWord, isPhrase, syllablesOf } from '../content/words';
 import { COURSE_MISSIONS } from '../content/course';
+import { MAX_MISSION_EXERCISES } from '../content/validate';
 import { PRACTICE_ID, isConfident, isKnownByAdult, nextMission, type LetterStatus, type ProgressState } from './progress';
 import { dueItems, isWordItem, letterTargets, textsOf } from './review';
 import { compareCloseness, closeness } from './similar';
@@ -115,11 +116,12 @@ function reviewVariant(rng: Rng): LetterVariant {
 
 /**
  * Розминка - не більше двох вправ, і разом з місією не більше дванадцяти, щоб місія не втомлювала.
- * Місце хоча б для однієї вправи розминки є завжди: так не забуваються вже вивчені букви.
+ * Межа власних вправ місії на одну менша, тож місце хоча б для однієї вправи розминки є завжди:
+ * так не забуваються вже вивчені букви.
  * Розминка буває й порожньою - коли нічому не настав час повторення.
  */
 export const MAX_WARM_UP = 2;
-export const MAX_WITH_WARM_UP = 12;
+export const MAX_WITH_WARM_UP = MAX_MISSION_EXERCISES + 1;
 
 /**
  * Розминка перед місією: буква, якій настав час повторення, і склади та слова з минулих місій,
