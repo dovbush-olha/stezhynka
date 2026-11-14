@@ -51,6 +51,9 @@ export function BuildWord({ exercise, seed, readingCase, readingCheck, completed
     return () => window.clearTimeout(t);
   }, [voiced, completed, word.text]);
 
+  // Довга фраза: сім і більше складів разом із зайвими або склад із чотирьох букв («Вовк»).
+  // На телефоні звичайні віконця й склади зайняли б по три рядки, тож вони менші (див. play.css).
+  const compact = phrase && (tiles.length > 6 || tiles.some((t) => t.text.length > 3));
   const built = placed.length === parts.length;
   const expected = parts[placed.length];
   // «Лі» і «лі» - той самий склад (у «Лілі» обидва; великими буквами їх і не розрізниш).
@@ -100,7 +103,7 @@ export function BuildWord({ exercise, seed, readingCase, readingCheck, completed
   };
 
   return (
-    <div className="exercise exercise--build">
+    <div className={['exercise exercise--build', phrase && 'exercise--phrase', compact && 'exercise--compact'].filter(Boolean).join(' ')}>
       {(showPicture || voiced) && !completed && (
         <div className="build__prompt">
           {showPicture && (

@@ -878,6 +878,43 @@
     padding: 12px 18px;
   }
 
+  /*
+   * Фраза з двох-трьох слів часто займає два рядки віконець: кнопка звуку над нею на телефоні менша,
+   * щоб уся вправа вміщалася без прокрутки.
+   */
+  .exercise--phrase .listen-button--big {
+    width: 64px;
+    height: 64px;
+    font-size: 1.9rem;
+  }
+
+  /*
+   * Довга фраза («У Ірини корона», «Вовк і сова»): звичайного розміру віконця й склади зайняли б по три рядки.
+   * Віконце розширюється під довгий склад, щоб «вовк» не вилазив за рамку.
+   */
+  .exercise--compact .word-slots:not(.word-slots--built) {
+    padding: 10px 12px;
+    row-gap: 10px;
+    column-gap: 20px;
+  }
+
+  .exercise--compact .word-slots:not(.word-slots--built) .word-slot {
+    width: auto;
+    min-width: 68px;
+    height: 62px;
+    padding: 0 6px;
+  }
+
+  .exercise--compact .syllable-tile {
+    min-width: 74px;
+    height: 64px;
+    padding: 0 8px;
+  }
+
+  .exercise--compact .tile-pool {
+    gap: 8px;
+  }
+
   .word-slots--built:not(.word-slots--phrase) {
     gap: 0;
   }
